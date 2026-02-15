@@ -1,0 +1,18 @@
+server:
+  port: 8080
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5433/jobtracker
+    username: jobtracker
+    password: jobtracker
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    open-in-view: false
+app:
+  jwt:
+    secret: "dev-secret-change-me-dev-secret-change-me-dev-secret-change-me"
+    expiration-minutes: 3600000

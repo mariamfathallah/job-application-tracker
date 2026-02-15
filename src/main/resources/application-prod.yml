@@ -1,0 +1,10 @@
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+app:
+  jwt:
+    secret: "this-is-a-very-long-prod-secret-at-least-32-chars!!"
+    expiration-minutes: 120
