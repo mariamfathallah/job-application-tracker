@@ -6,5 +6,5 @@ springdoc:
 
 app:
   jwt:
-    secret: "this-is-a-very-long-test-secret-at-least-32-chars!!"
+    secret: ${JWT_SECRET:this-is-a-very-long-test-secret-at-least-32-chars!!}
     expiration-minutes: 3600000

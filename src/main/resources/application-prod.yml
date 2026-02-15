@@ -4,7 +4,17 @@ springdoc:
   swagger-ui:
     enabled: false
 
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+
 app:
   jwt:
-    secret: "this-is-a-very-long-prod-secret-at-least-32-chars!!"
-    expiration-minutes: 120
+    secret: ${JWT_SECRET}
+    expiration-minutes: ${JWT_EXPIRATION_MINUTES:120}
