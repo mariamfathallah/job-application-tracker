@@ -1,8 +1,25 @@
+![CI](https://github.com/mariamfathallah/job-application-tracker/actions/workflows/ci.yml/badge.svg)
 # Job Application Tracker – Backend API
 
-A secure RESTful backend application to manage and track job applications throughout the recruitment process.
+A secure, production-ready RESTful backend application to manage and track job applications throughout the recruitment process.
 
-This project was built as a personal initiative to demonstrate **backend engineering skills, production readiness, testing strategy, and deployment practices**.
+The project demonstrates backend engineering best practices including JWT-based authentication, role-based access control, environment-driven configuration, containerized deployment, CI integration, and managed cloud database usage.
+
+### 🔗 Live API:
+https://job-application-tracker-rat3.onrender.com
+
+> ⚠️ Deployed on Render free tier — the service may take a few seconds to wake up after inactivity.
+
+## 🧪 Quick Test (Live Deployment)
+
+1. Register:
+   POST https://job-application-tracker-rat3.onrender.com/api/auth/register
+
+2. Login to receive JWT token:
+   POST https://job-application-tracker-rat3.onrender.com/api/auth/login
+
+3. Use the token to access protected endpoints:
+   Authorization: Bearer <token>
 
 ---
 
@@ -23,8 +40,9 @@ This project was built as a personal initiative to demonstrate **backend enginee
 
 ### Data & persistence
 - PostgreSQL (production profile)
-- H2 (development & test profile)
-- Environment-based configuration
+- H2 (test profile)
+- Profile-based configuration (dev / prod / test)
+- Environment-variable driven production config
 - Docker support
 
 ### Quality & Testing
@@ -33,11 +51,12 @@ This project was built as a personal initiative to demonstrate **backend enginee
 - Clean service/repository architecture
 - Global exception handling
 
-### DevOps
-- Dockerized application
-- Production & development profiles
-- Designed for deployment on Google Cloud Run
-- CI/CD ready (GitHub Actions)
+### DevOps & Deployment
+- Dockerized multi-stage build
+- GitHub Actions CI (tests on push)
+- Managed PostgreSQL (Render)
+- Public HTTPS deployment
+- Actuator health endpoint
 
 ---
 
@@ -49,9 +68,10 @@ This project was built as a personal initiative to demonstrate **backend enginee
 - **Spring Data JPA**
 - **Spring Security (JWT)**
 - **PostgreSQL**
-- **H2 (dev & test)**
+- **H2 (tests)**
 - **Docker**
 - **Springdoc OpenAPI (Swagger UI)**
+- **Spring Boot Actuator**
 - **JUnit 5 & MockMvc**
 - **Maven**
 
@@ -69,6 +89,7 @@ Controller → Service → Repository → Database
 - **Security layer** integrates JWT authentication and enforces per-user data isolation.
 - **Global exception handling** ensures consistent and structured API error responses.
 - **Profile-based configuration** separates development and production environments.
+- **Actuator** provides operational monitoring.
 
 ---
 
@@ -93,6 +114,13 @@ Controller → Service → Repository → Database
 ### Register
 ```bash
 POST /api/auth/register
+```
+```json
+{
+  "email": "user@example.com",
+  "password": "Password123!",
+  "displayName": "User Name"
+}
 ```
 ### Login
 ```bash
@@ -127,6 +155,14 @@ GET /api/applications?page=0&size=10&sort=dateApplied,desc
 ```
 ---
 
+## ❤️ Health Check
+```bash
+GET /actuator/health
+```
+Used for production monitoring.
+
+---
+
 ## 📘 API Documentation 
 After running the application, access:
 
@@ -138,15 +174,15 @@ http://localhost:8080/v3/api-docs
 
 ---
 ## ⚙️ Profiles
-### Development
-- H2 database
-- SQL visible in logs
-- Swagger enabled
-
-### Production
-- PostgreSQL
-- Environment variables required
-- Secure configuration
+- `dev` → Swagger enabled
+- `test` → H2 in-memory DB
+- `prod` → PostgreSQL + environment variables
+Required production environment variables:
+- `SPRING_PROFILES_ACTIVE=prod`
+- `SPRING_DATASOURCE_URL`
+- `SPRING_DATASOURCE_USERNAME`
+- `SPRING_DATASOURCE_PASSWORD`
+- `JWT_SECRET`
 
 ---
 
@@ -170,7 +206,6 @@ Integration tests validate:
 - Ownership enforcement
 - CRUD operations
 - Validation errors
-- 404 handling
 - Pagination behavior
 
 Run tests with:
@@ -196,10 +231,10 @@ http://localhost:8080
 ---
 
 ## ☁ Deployment
-Designed for:
-- GitHub Actions CI/CD
-- Google Cloud Run
-- Managed PostgreSQL
+
+- Currently deployed on **Render** with managed PostgreSQL.
+- CI/CD pipeline runs on GitHub Actions and automatically validates builds on push.
+- Architecture supports migration to other cloud providers (e.g., Google Cloud Run).
 
 ---
 
@@ -227,7 +262,7 @@ This project was developed as part of a **gap year personal initiative** after a
 * Admin role
 * Search & filtering enhancements
 * Statistics endpoint (dashboard metrics)
-* Frontend (React)
+* Frontend 
 * Monitoring & logging improvements
 
 ## 👩‍💻 Author
