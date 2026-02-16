@@ -2,6 +2,7 @@ import { useState } from "react";
 import { api } from "../api";
 import { useNavigate } from "react-router-dom";
 import AppShell from "../components/AppShell";
+import toast from "react-hot-toast";
 
 
 const STATUSES = ["APPLIED", "INTERVIEW", "OFFER", "REJECTED"];
@@ -22,8 +23,10 @@ export default function NewApplication() {
         setLoading(true);
         try {
             await api.createApplication({ company, position, status, dateApplied, notes });
+            toast.success("Application created")
             nav("/applications");
         } catch (e) {
+            toast.error(e.message);
             setErr(e.message);
         } finally {
             setLoading(false);

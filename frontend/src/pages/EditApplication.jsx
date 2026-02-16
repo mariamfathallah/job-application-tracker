@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "../api";
 import { useNavigate, useParams } from "react-router-dom";
 import AppShell from "../components/AppShell";
+import toast from "react-hot-toast";
 
 const STATUSES = ["APPLIED", "INTERVIEW", "OFFER", "REJECTED"];
 
@@ -47,8 +48,10 @@ export default function EditApplication() {
         setLoading(true);
         try {
             await api.updateApplication(id, { company, position, status, dateApplied, notes });
+            toast.success("Changes saved");
             nav("/applications");
         } catch (e) {
+            toast.error(e.message);
             setErr(e.message);
         } finally {
             setLoading(false);

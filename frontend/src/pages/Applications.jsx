@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api, clearToken } from "../api";
 import { useNavigate } from "react-router-dom";
 import AppShell from "../components/AppShell";
+import toast from "react-hot-toast";
 
 
 function formatDate(iso) {
@@ -154,8 +155,10 @@ export default function Applications() {
                                                     const newStatus = e.target.value;
                                                     try {
                                                         await api.updateApplicationStatus(a.id, newStatus);
+                                                        toast.success("Status updated");
                                                         await load(page);
                                                     } catch (err) {
+                                                        toast.error(err.message);
                                                         setErr(err.message);
                                                     }
                                                 }}
@@ -181,12 +184,14 @@ export default function Applications() {
 
                                                         try {
                                                             await api.deleteApplication(a.id);
+                                                            toast.success("Application deleted");
 
                                                             const isLastItemOnPage = data.content.length === 1;
                                                             const nextPage = isLastItemOnPage && page > 0 ? page - 1 : page;
 
                                                             await load(nextPage);
                                                         } catch (e) {
+                                                            toast.error(e.message);
                                                             setErr(e.message);
                                                         }
                                                     }}
