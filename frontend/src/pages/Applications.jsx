@@ -16,6 +16,10 @@ export default function Applications() {
     const [err, setErr] = useState("");
     const [page, setPage] = useState(0);
 
+
+    const [query, setQuery] = useState("");
+    const [statusFilter, setStatusFilter] = useState("ALL");
+
     async function load(p = 0) {
         setErr("");
         try {
@@ -35,6 +39,22 @@ export default function Applications() {
         load(0);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+
+    const items = data?.content ?? [];
+    const q = query.trim().toLowerCase();
+
+    const filtered = items.filter((a) => {
+        const matchesQuery =
+            !q ||
+            (a.company || "").toLowerCase().includes(q) ||
+            (a.position || "").toLowerCase().includes(q);
+
+        const matchesStatus =
+            statusFilter === "ALL" || a.status === statusFilter;
+
+        return matchesQuery && matchesStatus;
+    });
 
     return (
         <AppShell
@@ -67,6 +87,49 @@ export default function Applications() {
             ) : (
                 <div className="card">
                     <div className="cardBody">
+                        <div style={{
+                            display: "flex",
+                            gap: 10,
+                            alignItems: "center",
+                            marginBottom: 12,
+                            flexWrap: "wrap"
+                        }}>
+                            <input
+                                className="input"
+                                style={{maxWidth: 320}}
+                                placeholder="Search company or position…"
+                                value={query}
+                                onChange={(e) => setQuery(e.target.value)}
+                            />
+
+                            <select
+                                className="select selectSm"
+                                value={statusFilter}
+                                onChange={(e) => setStatusFilter(e.target.value)}
+                            >
+                                <option value="ALL">All statuses</option>
+                                {["APPLIED", "INTERVIEW", "OFFER", "REJECTED"].map((s) => (
+                                    <option key={s} value={s}>{s}</option>
+                                ))}
+                            </select>
+
+                            {(query || statusFilter !== "ALL") && (
+                                <button
+                                    className="btn btnGhost"
+                                    onClick={() => {
+                                        setQuery("");
+                                        setStatusFilter("ALL");
+                                    }}
+                                >
+                                    Clear
+                                </button>
+                            )}
+
+                            <span className="smallMuted" style={{marginLeft: "auto"}}>
+                                    Showing {filtered.length} / {items.length}
+                            </span>
+                        </div>
+
                         <div className="tableWrap">
                             <table className="table">
                                 <thead>
@@ -79,13 +142,13 @@ export default function Applications() {
                                 </tr>
                                 </thead>
                                 <tbody>
-                                {data.content.map((a) => (
+                                {filtered.map((a) => (
                                     <tr key={a.id}>
                                         <td style={{fontWeight: 700}}>{a.company}</td>
                                         <td>{a.position}</td>
                                         <td>
                                             <select
-                                                className="selectSm"
+                                                className="select selectSm"
                                                 value={a.status}
                                                 onChange={async (e) => {
                                                     const newStatus = e.target.value;
@@ -136,10 +199,10 @@ export default function Applications() {
                                     </tr>
                                 ))}
 
-                                {data.content.length === 0 && (
+                                {filtered.length === 0 && (
                                     <tr>
                                         <td colSpan="5" style={{color: "var(--muted)"}}>
-                                            No applications yet. Click “New application” to create one.
+                                            No results. Try changing your search or filters.
                                         </td>
                                     </tr>
                                 )}
@@ -147,14 +210,14 @@ export default function Applications() {
                             </table>
                         </div>
 
-                        <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 14 }}>
+                        <div style={{display: "flex", gap: 10, alignItems: "center", marginTop: 14}}>
                             <button className="btn" disabled={page === 0} onClick={() => load(page - 1)}>
                                 Prev
                             </button>
                             <button className="btn" disabled={data.last} onClick={() => load(page + 1)}>
                                 Next
                             </button>
-                            <span className="smallMuted" style={{ marginLeft: 6 }}>
+                            <span className="smallMuted" style={{marginLeft: 6}}>
                 Page {data.page + 1} / {data.totalPages || 1}
               </span>
                         </div>
