@@ -4,16 +4,6 @@ import { useNavigate } from "react-router-dom";
 import AppShell from "../components/AppShell";
 
 
-function StatusBadge({ status }) {
-    const s = String(status || "").toLowerCase();
-    return (
-        <span className={`badge ${s}`}>
-      <span className="badgeDot" />
-            {status}
-    </span>
-    );
-}
-
 function formatDate(iso) {
     if (!iso) return "";
     const d = new Date(iso);
@@ -85,21 +75,70 @@ export default function Applications() {
                                     <th>Position</th>
                                     <th>Status</th>
                                     <th>Date applied</th>
+                                    <th>Actions</th>
                                 </tr>
                                 </thead>
                                 <tbody>
                                 {data.content.map((a) => (
                                     <tr key={a.id}>
-                                        <td style={{ fontWeight: 700 }}>{a.company}</td>
+                                        <td style={{fontWeight: 700}}>{a.company}</td>
                                         <td>{a.position}</td>
-                                        <td><StatusBadge status={a.status} /></td>
+                                        <td>
+                                            <select
+                                                className="selectSm"
+                                                value={a.status}
+                                                onChange={async (e) => {
+                                                    const newStatus = e.target.value;
+                                                    try {
+                                                        await api.updateApplicationStatus(a.id, newStatus);
+                                                        await load(page);
+                                                    } catch (err) {
+                                                        setErr(err.message);
+                                                    }
+                                                }}
+                                            >
+                                                {["APPLIED", "INTERVIEW", "OFFER", "REJECTED"].map(s => (
+                                                    <option key={s} value={s}>{s}</option>
+                                                ))}
+                                            </select>
+                                        </td>
                                         <td>{formatDate(a.dateApplied)}</td>
+                                        <td>
+                                            <div style={{display: "flex", gap: 8}}>
+                                                <button className="btn"
+                                                        onClick={() => nav(`/applications/${a.id}/edit`)}>
+                                                    Edit
+                                                </button>
+
+                                                <button
+                                                    className="btn btnDanger"
+                                                    onClick={async () => {
+                                                        const ok = confirm(`Delete ${a.company} - ${a.position}?`);
+                                                        if (!ok) return;
+
+                                                        try {
+                                                            await api.deleteApplication(a.id);
+
+                                                            const isLastItemOnPage = data.content.length === 1;
+                                                            const nextPage = isLastItemOnPage && page > 0 ? page - 1 : page;
+
+                                                            await load(nextPage);
+                                                        } catch (e) {
+                                                            setErr(e.message);
+                                                        }
+                                                    }}
+
+                                                >
+                                                    Delete
+                                                </button>
+                                            </div>
+                                        </td>
                                     </tr>
                                 ))}
 
                                 {data.content.length === 0 && (
                                     <tr>
-                                        <td colSpan="4" style={{ color: "var(--muted)" }}>
+                                        <td colSpan="5" style={{color: "var(--muted)"}}>
                                             No applications yet. Click “New application” to create one.
                                         </td>
                                     </tr>

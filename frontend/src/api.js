@@ -46,4 +46,16 @@ export const api = {
     },
 
     createApplication: (payload) => request("/api/applications", { method: "POST", body: payload, auth: true}),
+
+    getApplication: (id) =>
+        request(`/api/applications/${id}`, { auth: true }),
+
+    updateApplication: (id, payload) =>
+        request(`/api/applications/${id}`, { method: "PUT", body: payload, auth: true }),
+
+    deleteApplication: (id) =>
+        request(`/api/applications/${id}`, { method: "DELETE", auth: true }),
+
+    updateApplicationStatus: (id, status) =>
+        request(`/api/applications/${id}/status`, { method: "PATCH", body: { status }, auth: true }),
 };

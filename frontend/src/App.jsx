@@ -4,6 +4,7 @@ import Register from "./pages/Register";
 import Applications from "./pages/Applications";
 import NewApplication from "./pages/NewApplication";
 import { getToken } from "./api";
+import EditApplication from "./pages/EditApplication.jsx";
 
 function RequireAuth({ children }) {
     const token = getToken();
@@ -34,7 +35,14 @@ export default function App() {
                         </RequireAuth>
                     }
                 />
-
+                <Route
+                    path="/applications/:id/edit"
+                    element={
+                        <RequireAuth>
+                            <EditApplication />
+                        </RequireAuth>
+                    }
+                />
                 <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
         </BrowserRouter>

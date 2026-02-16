@@ -225,3 +225,16 @@ a:hover{ text-decoration: underline; }
     width: 100%;
     max-width: 1000px; /* adjust: 900-1100 */
 }
+.btnDanger{
+    border-color: rgba(255,92,122,.35);
+    background: rgba(255,92,122,.10);
+}
+.btnDanger:hover{
+    background: rgba(255,92,122,.16);
+}
+.selectSm{
+    width: auto;
+    padding: 6px 10px;
+    border-radius: 10px;
+    font-size: 12px;
+}
