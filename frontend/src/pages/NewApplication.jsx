@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { api } from "../api";
 import { useNavigate } from "react-router-dom";
+import AppShell from "../components/AppShell";
+
 
 const STATUSES = ["APPLIED", "INTERVIEW", "OFFER", "REJECTED"];
 
@@ -29,59 +31,63 @@ export default function NewApplication() {
     }
 
     return (
-        <div style={{ maxWidth: 520, margin: "40px auto" }}>
-            <h1>New Application</h1>
-            <form onSubmit={onSubmit}>
-                <label htmlFor="company">Company</label>
-                <input
-                    id="company"
-                    name="company"
-                    type="company"
-                    value={company}
-                    onChange={(e) => setCompany(e.target.value)} style={{ width: "100%" }} />
-
-                <label htmlFor="position">Position</label>
-                <input
-                    id="position"
-                    name="position"
-                    type="position"
-                    value={position}
-                    onChange={(e) => setPosition(e.target.value)} style={{ width: "100%" }} />
-
-                <label htmlFor="status">Status</label>
-                <select
-                    id="status"
-                    name="status"
-                    value={status}
-                    onChange={(e) => setStatus(e.target.value)} style={{ width: "100%" }}>
-                    {STATUSES.map((s) => (
-                        <option key={s} value={s}>
-                            {s}
-                        </option>
-                    ))}
-                </select>
-
-                <label htmlFor="dateApplied">Date Applied</label>
-                <input
-                    id="date"
-                    name="date"
-                    type="date"
-                    value={dateApplied}
-                    onChange={(e) => setDateApplied(e.target.value)} style={{ width: "100%" }} />
-
-                <label htmlFor="notes">Notes</label>
-                <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={4} style={{ width: "100%" }} />
-
-                <button disabled={loading} style={{ marginTop: 12 }}>
-                    {loading ? "..." : "Create"}
+        <AppShell
+            right={
+                <button className="btn btnGhost" onClick={() => nav("/applications")}>
+                    Back
                 </button>
-            </form>
+            }
+        >
+            <h1 className="pageTitle">New application</h1>
+            <p className="pageSubtitle">Add a new job you applied to.</p>
 
-            {err && <p style={{ color: "crimson" }}>{err}</p>}
+            <div className="card" style={{ maxWidth: 720 }}>
+                <div className="cardBody">
+                    <form onSubmit={onSubmit} className="formGrid">
+                        <div>
+                            <div className="label">Company</div>
+                            <input className="input" value={company} onChange={(e) => setCompany(e.target.value)} placeholder="e.g. Amazon" />
+                        </div>
 
-            <button style={{ marginTop: 12 }} onClick={() => nav("/applications")}>
-                Back
-            </button>
-        </div>
+                        <div>
+                            <div className="label">Position</div>
+                            <input className="input" value={position} onChange={(e) => setPosition(e.target.value)} placeholder="e.g. Software Engineer" />
+                        </div>
+
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                            <div>
+                                <div className="label">Status</div>
+                                <select className="select" value={status} onChange={(e) => setStatus(e.target.value)}>
+                                    {STATUSES.map((s) => (
+                                        <option key={s} value={s}>{s}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div>
+                                <div className="label">Date applied</div>
+                                <input className="input" type="date" value={dateApplied} onChange={(e) => setDateApplied(e.target.value)} />
+                            </div>
+                        </div>
+
+                        <div>
+                            <div className="label">Notes</div>
+                            <textarea className="textarea" value={notes} onChange={(e) => setNotes(e.target.value)} rows={4} placeholder="Interview details, links, contacts…" />
+                        </div>
+
+                        <div className="actionsRow">
+                            <button type="button" className="btn btnGhost" onClick={() => nav("/applications")}>
+                                Cancel
+                            </button>
+                            <button className="btn btnPrimary" disabled={loading}>
+                                {loading ? "Creating…" : "Create"}
+                            </button>
+                        </div>
+                    </form>
+
+                    {err && <div className="error">{err}</div>}
+                </div>
+            </div>
+        </AppShell>
     );
 }

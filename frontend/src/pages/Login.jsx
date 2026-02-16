@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { api, setToken } from "../api";
 import { useNavigate, Link } from "react-router-dom";
+import AppShell from "../components/AppShell";
 
 export default function Login() {
     const nav = useNavigate();
@@ -25,36 +26,53 @@ export default function Login() {
     }
 
     return (
-        <div style={{ maxWidth: 420, margin: "40px auto" }}>
-            <h1>Login</h1>
-            <form onSubmit={onSubmit}>
-                <label htmlFor="email">Email</label>
-                <input
-                    id="email"
-                    name="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    style={{ width: "100%" }}
-                />
+        <AppShell>
+            <div className="authShell">
+                <div className="card authCard">
+                    <div className="cardBody">
+                        <h1 className="pageTitle">Login</h1>
+                        <p className="pageSubtitle">Welcome back. Track your applications in one place.</p>
 
-                <label htmlFor="password">Password</label>
-                <input
-                    id="password"
-                    name="password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    style={{ width: "100%" }}
-                />
-                <button disabled={loading} style={{marginTop: 12}}>
-                    {loading ? "..." : "Login"}
-                </button>
-            </form>
-            {err && <p style={{color: "crimson"}}>{err}</p>}
-            <p style={{marginTop: 12}}>
-                No account? <Link to="/register">Register</Link>
-            </p>
-        </div>
+                        <form onSubmit={onSubmit} className="formGrid">
+                            <div>
+                                <div className="label">Email</div>
+                                <input
+                                    className="input"
+                                    type="email"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    placeholder="you@email.com"
+                                    autoComplete="email"
+                                />
+                            </div>
+
+                            <div>
+                                <div className="label">Password</div>
+                                <input
+                                    className="input"
+                                    type="password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    placeholder="••••••••"
+                                    autoComplete="current-password"
+                                />
+                            </div>
+
+                            <div className="actionsRow">
+                                <button className="btn btnPrimary" disabled={loading}>
+                                    {loading ? "Signing in…" : "Login"}
+                                </button>
+                            </div>
+                        </form>
+
+                        {err && <div className="error">{err}</div>}
+
+                        <p className="smallMuted" style={{ marginTop: 14 }}>
+                            No account? <Link to="/register">Create one</Link>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </AppShell>
     );
 }

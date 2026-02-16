@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { api, setToken } from "../api";
 import { useNavigate, Link } from "react-router-dom";
+import AppShell from "../components/AppShell";
 
 export default function Register() {
     const nav = useNavigate();
@@ -26,42 +27,64 @@ export default function Register() {
     }
 
     return (
-        <div style={{ maxWidth: 420, margin: "40px auto" }}>
-            <h1>Register</h1>
-            <form onSubmit={onSubmit}>
-                <label htmlFor="displayName">Name</label>
-                <input id="displayName"
-                       name="displayName"
-                       value={displayName}
-                       onChange={(e) => setDisplayName(e.target.value)}
-                       style={{ width: "100%" }} />
-                <label htmlFor="email">Email</label>
-                <input
-                    id="email"
-                    name="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    style={{ width: "100%" }}
-                />
+        <AppShell>
+            <div className="authShell">
+                <div className="card authCard">
+                    <div className="cardBody">
+                        <h1 className="pageTitle">Create account</h1>
+                        <p className="pageSubtitle">Start tracking your job search in minutes.</p>
 
-                <label htmlFor="password">Password</label>
-                <input
-                    id="password"
-                    name="password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    style={{ width: "100%" }}
-                />
-                <button disabled={loading} style={{marginTop: 12}}>
-                    {loading ? "..." : "Create account"}
-                </button>
-            </form>
-            {err && <p style={{color: "crimson"}}>{err}</p>}
-            <p style={{marginTop: 12}}>
-                Already have an account? <Link to="/login">Login</Link>
-            </p>
-        </div>
+                        <form onSubmit={onSubmit} className="formGrid">
+                            <div>
+                                <div className="label">Name</div>
+                                <input
+                                    className="input"
+                                    value={displayName}
+                                    onChange={(e) => setDisplayName(e.target.value)}
+                                    placeholder="Your name"
+                                    autoComplete="name"
+                                />
+                            </div>
+
+                            <div>
+                                <div className="label">Email</div>
+                                <input
+                                    className="input"
+                                    type="email"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    placeholder="you@email.com"
+                                    autoComplete="email"
+                                />
+                            </div>
+
+                            <div>
+                                <div className="label">Password</div>
+                                <input
+                                    className="input"
+                                    type="password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    placeholder="Create a password"
+                                    autoComplete="new-password"
+                                />
+                            </div>
+
+                            <div className="actionsRow">
+                                <button className="btn btnPrimary" disabled={loading}>
+                                    {loading ? "Creating…" : "Create account"}
+                                </button>
+                            </div>
+                        </form>
+
+                        {err && <div className="error">{err}</div>}
+
+                        <p className="smallMuted" style={{ marginTop: 14 }}>
+                            Already have an account? <Link to="/login">Login</Link>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </AppShell>
     );
 }
