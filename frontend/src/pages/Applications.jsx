@@ -24,8 +24,14 @@ export default function Applications() {
     const [menuOpenId, setMenuOpenId] = useState(null);
     const [deleteTarget, setDeleteTarget] = useState(null);
 
+    const [statusBusyId, setStatusBusyId] = useState(null);
+    const [pageLoading, setPageLoading] = useState(false);
+
+    const [deleteBusy, setDeleteBusy] = useState(false);
+
     async function load(p = 0) {
         setErr("");
+        setPageLoading(true);
         try {
             const res = await api.listApplications({ page: p, size: 5, sort: "dateApplied,desc" });
             setData(res);
@@ -36,6 +42,8 @@ export default function Applications() {
                 clearToken();
                 nav("/login");
             }
+        } finally {
+            setPageLoading(false);
         }
     }
 
@@ -59,6 +67,16 @@ export default function Applications() {
 
         return matchesQuery && matchesStatus;
     });
+
+    function updateRow(id, patch) {
+        setData((prev) => {
+            if (!prev) return prev;
+            return {
+                ...prev,
+                content: prev.content.map((x) => (x.id === id ? { ...x, ...patch } : x)),
+            };
+        });
+    }
 
     return (
         <AppShell
@@ -86,7 +104,32 @@ export default function Applications() {
 
             {!data ? (
                 <div className="card">
-                    <div className="cardBody">Loading…</div>
+                    <div className="cardBody">
+                        <div className="tableWrap">
+                            <table className="table">
+                                <thead>
+                                <tr>
+                                    <th>Company</th>
+                                    <th>Position</th>
+                                    <th>Status</th>
+                                    <th>Date applied</th>
+                                    <th>Actions</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                {[...Array(5)].map((_, i) => (
+                                    <tr key={i}>
+                                        <td><div className="sk skText" /></td>
+                                        <td><div className="sk skText" /></td>
+                                        <td><div className="sk skPill" /></td>
+                                        <td><div className="sk skText" /></td>
+                                        <td><div className="sk skBtn" /></td>
+                                    </tr>
+                                ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             ) : (
                 <div className="card">
@@ -157,18 +200,28 @@ export default function Applications() {
                                             <select
                                                 className="select selectSm"
                                                 value={a.status}
+                                                disabled={statusBusyId === a.id}
+                                                onClick={(e) => e.stopPropagation()}
                                                 onChange={async (e) => {
                                                     const newStatus = e.target.value;
+                                                    const oldStatus = a.status;
+
+                                                    //optimistic update
+                                                    updateRow(a.id, { status: newStatus });
+                                                    setStatusBusyId(a.id);
+
                                                     try {
                                                         await api.updateApplicationStatus(a.id, newStatus);
                                                         toast.success("Status updated");
                                                         await load(page);
                                                     } catch (err) {
+                                                        updateRow(a.id, { status: oldStatus });
                                                         toast.error(err.message);
                                                         setErr(err.message);
+                                                    } finally {
+                                                        setStatusBusyId(null);
                                                     }
                                                 }}
-                                                onClick={(e) => e.stopPropagation()}
                                             >
                                                 {["APPLIED", "INTERVIEW", "OFFER", "REJECTED"].map(s => (
                                                     <option key={s} value={s}>{s}</option>
@@ -226,11 +279,11 @@ export default function Applications() {
                         </div>
 
                         <div style={{display: "flex", gap: 10, alignItems: "center", marginTop: 14}}>
-                            <button className="btn" disabled={page === 0} onClick={() => load(page - 1)}>
-                                Prev
+                            <button className="btn" disabled={pageLoading || page === 0} onClick={() => load(page - 1)}>
+                                {pageLoading ? "..." : "Prev"}
                             </button>
-                            <button className="btn" disabled={data.last} onClick={() => load(page + 1)}>
-                                Next
+                            <button className="btn" disabled={pageLoading || data.last} onClick={() => load(page + 1)}>
+                                {pageLoading ? "..." : "Next"}
                             </button>
                             <span className="smallMuted" style={{marginLeft: 6}}>
                                 Page {data.page + 1} / {data.totalPages || 1}
@@ -257,8 +310,10 @@ export default function Applications() {
 
                             <button
                                 className="btn btnDanger"
+                                disabled={deleteBusy}
                                 onClick={async () => {
                                     try {
+                                        setDeleteBusy(true);
                                         await api.deleteApplication(deleteTarget.id);
                                         toast.success("Application deleted");
 
@@ -269,10 +324,12 @@ export default function Applications() {
                                         await load(nextPage);
                                     } catch (e) {
                                         toast.error(e.message);
+                                    } finally {
+                                        setDeleteBusy(false);
                                     }
                                 }}
                             >
-                                Delete
+                                {deleteBusy ? "Deleting…" : "Delete"}
                             </button>
                         </div>
                     </div>
