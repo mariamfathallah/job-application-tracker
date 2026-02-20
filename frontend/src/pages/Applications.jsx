@@ -21,6 +21,9 @@ export default function Applications() {
     const [query, setQuery] = useState("");
     const [statusFilter, setStatusFilter] = useState("ALL");
 
+    const [menuOpenId, setMenuOpenId] = useState(null);
+    const [deleteTarget, setDeleteTarget] = useState(null);
+
     async function load(p = 0) {
         setErr("");
         try {
@@ -144,7 +147,10 @@ export default function Applications() {
                                 </thead>
                                 <tbody>
                                 {filtered.map((a) => (
-                                    <tr key={a.id}>
+                                    <tr key={a.id}
+                                        onClick={() => nav(`/applications/${a.id}/edit`)}
+                                        style={{ cursor: "pointer" }}
+                                    >
                                         <td style={{fontWeight: 700}}>{a.company}</td>
                                         <td>{a.position}</td>
                                         <td>
@@ -162,6 +168,7 @@ export default function Applications() {
                                                         setErr(err.message);
                                                     }
                                                 }}
+                                                onClick={(e) => e.stopPropagation()}
                                             >
                                                 {["APPLIED", "INTERVIEW", "OFFER", "REJECTED"].map(s => (
                                                     <option key={s} value={s}>{s}</option>
@@ -169,36 +176,39 @@ export default function Applications() {
                                             </select>
                                         </td>
                                         <td>{formatDate(a.dateApplied)}</td>
-                                        <td>
-                                            <div style={{display: "flex", gap: 8}}>
-                                                <button className="btn"
-                                                        onClick={() => nav(`/applications/${a.id}/edit`)}>
-                                                    Edit
-                                                </button>
-
-                                                <button
-                                                    className="btn btnDanger"
-                                                    onClick={async () => {
-                                                        const ok = confirm(`Delete ${a.company} - ${a.position}?`);
-                                                        if (!ok) return;
-
-                                                        try {
-                                                            await api.deleteApplication(a.id);
-                                                            toast.success("Application deleted");
-
-                                                            const isLastItemOnPage = data.content.length === 1;
-                                                            const nextPage = isLastItemOnPage && page > 0 ? page - 1 : page;
-
-                                                            await load(nextPage);
-                                                        } catch (e) {
-                                                            toast.error(e.message);
-                                                            setErr(e.message);
-                                                        }
-                                                    }}
-
+                                        <td onClick={(e)=> e.stopPropagation()}>
+                                            <div style={{ position: "relative" }}>
+                                                <button className="btn btnGhost"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setMenuOpenId(menuOpenId === a.id ? null : a.id);
+                                                        }}
                                                 >
-                                                    Delete
+                                                    ...
                                                 </button>
+
+                                                {menuOpenId === a.id && (
+                                                    <div className="menu">
+                                                        <button
+                                                            className="menuItem"
+                                                            onClick={() => {
+                                                                nav(`/applications/${a.id}/edit`);
+                                                            }}
+                                                        >
+                                                            Edit
+                                                        </button>
+
+                                                        <button
+                                                            className="menuItem danger"
+                                                            onClick={() => {
+                                                                setMenuOpenId(null);
+                                                                setDeleteTarget(a);
+                                                            }}
+                                                        >
+                                                            Delete
+                                                        </button>
+                                                    </div>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>
@@ -223,8 +233,47 @@ export default function Applications() {
                                 Next
                             </button>
                             <span className="smallMuted" style={{marginLeft: 6}}>
-                Page {data.page + 1} / {data.totalPages || 1}
-              </span>
+                                Page {data.page + 1} / {data.totalPages || 1}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {deleteTarget && (
+                <div className="modalOverlay">
+                    <div className="modalCard">
+                        <h3>Delete application?</h3>
+                        <p className="smallMuted">
+                            {deleteTarget.company} – {deleteTarget.position}
+                        </p>
+
+                        <div className="actionsRow">
+                            <button
+                                className="btn btnGhost"
+                                onClick={() => setDeleteTarget(null)}
+                            >
+                                Cancel
+                            </button>
+
+                            <button
+                                className="btn btnDanger"
+                                onClick={async () => {
+                                    try {
+                                        await api.deleteApplication(deleteTarget.id);
+                                        toast.success("Application deleted");
+
+                                        const isLastItemOnPage = data.content.length === 1;
+                                        const nextPage = isLastItemOnPage && page > 0 ? page - 1 : page;
+
+                                        setDeleteTarget(null);
+                                        await load(nextPage);
+                                    } catch (e) {
+                                        toast.error(e.message);
+                                    }
+                                }}
+                            >
+                                Delete
+                            </button>
                         </div>
                     </div>
                 </div>

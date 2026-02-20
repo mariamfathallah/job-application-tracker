@@ -238,3 +238,52 @@ a:hover{ text-decoration: underline; }
     border-radius: 10px;
     font-size: 12px;
 }
+.menu{
+    position: absolute;
+    right: 0;
+    top: 36px;
+    background: rgba(20,24,38,.98);
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 12px;
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    min-width: 120px;
+    z-index: 50;
+}
+
+.menuItem{
+    background: transparent;
+    border: none;
+    color: white;
+    padding: 8px 10px;
+    border-radius: 8px;
+    text-align: left;
+    cursor: pointer;
+}
+
+.menuItem:hover{
+    background: rgba(255,255,255,.08);
+}
+
+.menuItem.danger{
+    color: #ff6b81;
+}
+
+.modalOverlay{
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+}
+
+.modalCard{
+    background: rgba(20,24,38,.98);
+    border: 1px solid rgba(255,255,255,.12);
+    padding: 20px;
+    border-radius: 16px;
+    min-width: 340px;
+}
