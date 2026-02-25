@@ -5,6 +5,7 @@ import Applications from "./pages/Applications";
 import NewApplication from "./pages/NewApplication";
 import { getToken } from "./api";
 import EditApplication from "./pages/EditApplication.jsx";
+import NotFound from "./pages/NotFound.jsx";
 
 function RequireAuth({ children }) {
     const token = getToken();
@@ -43,7 +44,7 @@ export default function App() {
                         </RequireAuth>
                     }
                 />
-                <Route path="*" element={<Navigate to="/" replace />} />
+                <Route path="*" element={<NotFound />} />
             </Routes>
         </BrowserRouter>
     );

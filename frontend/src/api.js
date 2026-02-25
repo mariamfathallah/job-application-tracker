@@ -1,4 +1,4 @@
-const BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
 
 export function getToken(){
     return localStorage.getItem("token");
@@ -13,7 +13,8 @@ export function clearToken(){
 }
 
 async function request(path, { method = "GET", body, auth = true } = {}){
-    const headers = { "Content-Type": "application/json" };
+    const headers = {};
+    if (body) headers["Content-Type"]= "application/json";
 
     if (auth){
         const token = getToken();
@@ -27,9 +28,21 @@ async function request(path, { method = "GET", body, auth = true } = {}){
     });
 
     const text = await res.text();
-    const data = text ? JSON.parse(text) : null;
+    const data = (() => {
+        try {
+            return text ? JSON.parse(text) : null;
+        } catch {
+            return text ? { message: text } : null;
+        }
+    })();
 
     if (!res.ok){
+        if (res.status === 401) {
+            clearToken();
+            //force redirect even if we are deep in the app
+            window.location.href = "/login";
+            return;
+        }
         const message = data?.message || `${res.status} ${res.statusText}`;
         throw new Error(message);
     }

@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { api, setToken } from "../api";
+import {useEffect, useState} from "react";
+import {api, getToken, setToken} from "../api";
 import { useNavigate, Link } from "react-router-dom";
 import AppShell from "../components/AppShell";
 
@@ -24,6 +24,10 @@ export default function Login() {
             setLoading(false);
         }
     }
+
+    useEffect(() => {
+        if (getToken()) nav("/applications");
+    }, [nav]);
 
     return (
         <AppShell>
