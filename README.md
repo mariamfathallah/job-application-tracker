@@ -1,67 +1,101 @@
 ![CI](https://github.com/mariamfathallah/job-application-tracker/actions/workflows/ci.yml/badge.svg)
-# Job Application Tracker – Backend API
+# Job Application Tracker – Secure Full-Stack Web Application
 
-A secure, production-ready RESTful backend application to manage and track job applications throughout the recruitment process.
+A secure, production-ready full-stack web application to manage and track job applications throughout the recruitment process.
 
-The project demonstrates backend engineering best practices including JWT-based authentication, role-based access control, environment-driven configuration, containerized deployment, CI integration, and managed cloud database usage.
+The project demonstrates real-world software engineering practices including:
+- JWT-based authentication & ownership enforcement
+- Clean layered backend architecture
+- Modern frontend with loading states & optimistic updates
+- CI/CD pipeline
+- Docker containerization
+- Cloud deployment with managed PostgreSQL
 
-### 🔗 Live API:
+---
+
+## 🔗 Live Application:
+### 🌍 Frontend:
+https://job-application-tracker-two-puce.vercel.app
+### 🔌 Backend API:
 https://job-application-tracker-rat3.onrender.com
-
 > ⚠️ Deployed on Render free tier — the service may take a few seconds to wake up after inactivity.
 
-## 🧪 Quick Test (Live Deployment)
+---
 
-1. Register:
-   POST https://job-application-tracker-rat3.onrender.com/api/auth/register
+## 🖼️ Application Preview
+<p align="center"><strong>Authentication</strong></p>
+<p align="center">
+  <img src="docs/img.png" width="48%"/>
+  <img src="docs/img_1.png" width="48%"/>
+</p>
+<p align="center"><strong>Application Management</strong></p>
+<p align="center">
+  <img src="docs/img_3.png" width="48%"/>
+  <img src="docs/img_4.png" width="48%"/>
+</p>
 
-2. Login to receive JWT token:
-   POST https://job-application-tracker-rat3.onrender.com/api/auth/login
+---
 
-3. Use the token to access protected endpoints:
-   Authorization: Bearer <token>
+## 🏗 Architecture Overview
+
+The project follows a clean separation of concerns:
+
+React SPA → Spring Boot REST API → Service Layer → JPA Repository → PostgreSQL
+
+### Backend
+- Layered architecture (Controller → Service → Repository)
+- JWT authentication
+- Ownership-based authorization (per-user data isolation)
+- Global exception handling
+- Profile-based configuration (dev / test / prod)
+- Actuator health monitoring
+
+### Frontend
+- Secure auth flow (login/register)
+- Protected routes
+- Global auth state management
+- Optimistic UI updates
+- Skeleton loaders & loading states
+- Toast notifications
+- Production-ready build configuration
 
 ---
 
 ## 🚀 Features
 
-### Core functionality
-- Create, read, update and delete job applications
+### Job Application Management
+- Full CRUD operations
 - Pagination & sorting
 - Filtering support
-- Proper HTTP status codes and structured error handling
-- Input validation with meaningful error responses
+- Proper HTTP status codes
+- Structured error handling
+- Optimistic updates (instant UI feedback)
 
-### Security
+### Authentication & Security
 - Authentication (JWT-based)
 - User registration & login
-- Ownership rules (users can only access their own applications)
-- Role-based structure ready for admin extension
+- Ownership rules (users can only access their own data)
+- Global auth handling on frontend
+- CORS properly configured
+- Environment-variable driven secrets
 
-### Data & persistence
-- PostgreSQL (production profile)
-- H2 (test profile)
-- Profile-based configuration (dev / prod / test)
-- Environment-variable driven production config
-- Docker support
-
-### Quality & Testing
+### Quality & Engineering practices
 - Integration tests (MockMvc)
-- Profile-based testing configuration
-- Clean service/repository architecture
-- Global exception handling
+- Profile-based testing configuration (H2)
+- GitHub Actions CI (runs tests on push)
+- Docker multi-stage build
+- Production config separation
 
-### DevOps & Deployment
-- Dockerized multi-stage build
-- GitHub Actions CI (tests on push)
-- Managed PostgreSQL (Render)
+### Deployment
+- Dockerized backend
+- Managed PostgreSQL database
 - Public HTTPS deployment
-- Actuator health endpoint
+- Health endpoint monitoring
 
 ---
 
 ## 🛠 Tech Stack
-
+### Backend
 - **Java 21**
 - **Spring Boot**
 - **Spring Web**
@@ -75,27 +109,19 @@ https://job-application-tracker-rat3.onrender.com
 - **JUnit 5 & MockMvc**
 - **Maven**
 
+### Frontend
+- **React (Vite)**
+- **JavaScript (ES6+)**
+- **React Router**
+- **Axios**
+- **JWT-based Authentication**
+- **CSS**
 ---
 
-## 🏗 Architecture Overview
-
-The application follows a layered architecture with clear separation of concerns:
-
-Controller → Service → Repository → Database
-
-- **Controllers** handle HTTP communication and request validation.
-- **Services** encapsulate business logic and ownership rules.
-- **Repositories** manage database persistence via Spring Data JPA.
-- **Security layer** integrates JWT authentication and enforces per-user data isolation.
-- **Global exception handling** ensures consistent and structured API error responses.
-- **Profile-based configuration** separates development and production environments.
-- **Actuator** provides operational monitoring.
-
----
 
 ## 📌 Domain Model
 
-### JobApplication
+### JobApplication Entity
 - Company
 - Position
 - Status (`APPLIED`, `INTERVIEW`, `OFFER`, `REJECTED`)
@@ -110,7 +136,7 @@ Controller → Service → Repository → Database
 
 ---
 
-## 🔐 Authentication
+## 🔐 Authentication Example
 ### Register
 ```bash
 POST /api/auth/register
@@ -163,16 +189,6 @@ Used for production monitoring.
 
 ---
 
-## 📘 API Documentation 
-After running the application, access:
-
-* Swagger UI:
-http://localhost:8080/swagger-ui/index.html
-
-* OpenAPI JSON:
-http://localhost:8080/v3/api-docs
-
----
 ## ⚙️ Profiles
 - `dev` → Swagger enabled
 - `test` → H2 in-memory DB
@@ -212,57 +228,34 @@ Run tests with:
 ```bash
 mvn test
 ```
----
-
-## ▶️ Run the Application
-### Prerequisites
-* Java 21
-* Maven
-
-### Start the app
-```bash
-mvn spring-boot:run
-```
-The application runs on:
-```arduino
-http://localhost:8080
-```
-
----
-
-## ☁ Deployment
-
-- Currently deployed on **Render** with managed PostgreSQL.
-- CI/CD pipeline runs on GitHub Actions and automatically validates builds on push.
-- Architecture supports migration to other cloud providers (e.g., Google Cloud Run).
+CI automatically runs on push via GitHub Actions.
 
 ---
 
 ## 🎯 Project Goals
 
 This project demonstrates:
-- Secure REST API design
-- Clean layered architecture
-- Authentication & authorization implementation
-- Profile-based configuration management
-- Integration testing strategy
-- Production deployment readiness
+- Production-ready REST API design
+- Secure authentication & authorization
+- Clean architecture & separation of concerns
+- Real frontend-backend integration
+- CI/CD pipeline setup
+- Practical DevOps awareness
+- Cloud deployment experience
 - Docker containerization
 
 ---
 ## 📚 Purpose
 
 This project was developed as part of a **gap year personal initiative** after a MIAGE Bachelor degree to:
-* Strengthen backend development skills
+* Strengthen full-stack development skills
 * Apply clean architecture principles
 * Practice REST API design
 * Gain hands-on experience with testing and QA-oriented development
 
 ## 🔜 Future Improvements
 * Admin role
-* Search & filtering enhancements
 * Statistics endpoint (dashboard metrics)
-* Frontend 
 * Monitoring & logging improvements
 
 ## 👩‍💻 Author
