@@ -31,10 +31,12 @@ class ApiErrorContractTest {
     @Autowired UserRepository userRepository;
     @Autowired RoleRepository roleRepository;
     @Autowired JwtService jwtService;
+    @Autowired com.fathallah.jobapplicationtracker.application.repository.JobApplicationRepository jobApplicationRepository;
 
     @BeforeEach
     void setUp() {
-        // keep it simple: clear users so tokenFor() can insert safely
+        // delete child records first to avoid FK constraint violations
+        jobApplicationRepository.deleteAll();
         userRepository.deleteAll();
     }
 
