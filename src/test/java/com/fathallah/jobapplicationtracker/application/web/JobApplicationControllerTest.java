@@ -291,4 +291,58 @@ class JobApplicationControllerTest {
                 .andExpect(status().isForbidden());
     }
 
+    @Test
+    void list_searchByCompany_shouldReturnMatchingOnly() throws Exception {
+        // create two applications
+        mockMvc.perform(post("/api/applications")
+                        .header("Authorization", bearer())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "company", "Google", "position", "Engineer",
+                                "status", "APPLIED", "dateApplied", "2026-01-01"))))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/api/applications")
+                        .header("Authorization", bearer())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "company", "Amazon", "position", "Developer",
+                                "status", "INTERVIEW", "dateApplied", "2026-01-02"))))
+                .andExpect(status().isCreated());
+
+        // search for "google" — should return only 1
+        mockMvc.perform(get("/api/applications")
+                        .header("Authorization", bearer())
+                        .param("q", "google"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].company").value("Google"));
+    }
+
+    @Test
+    void list_filterByStatus_shouldReturnMatchingOnly() throws Exception {
+        mockMvc.perform(post("/api/applications")
+                        .header("Authorization", bearer())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "company", "Google", "position", "Engineer",
+                                "status", "APPLIED", "dateApplied", "2026-01-01"))))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/api/applications")
+                        .header("Authorization", bearer())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "company", "Amazon", "position", "Developer",
+                                "status", "INTERVIEW", "dateApplied", "2026-01-02"))))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/applications")
+                        .header("Authorization", bearer())
+                        .param("status", "INTERVIEW"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].company").value("Amazon"));
+    }
+
 }

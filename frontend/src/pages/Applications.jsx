@@ -30,11 +30,14 @@ export default function Applications() {
 
     const [deleteBusy, setDeleteBusy] = useState(false);
 
-    async function load(p = 0) {
+    async function load(p = 0, q = query, s = statusFilter) {
         setErr("");
         setPageLoading(true);
         try {
-            const res = await api.listApplications({ page: p, size: 5, sort: "dateApplied,desc" });
+            const params =  { page: p, size: 5, sort: "dateApplied,desc"};
+            if (q) params.q = q;
+            if (s !== "ALL") params.status = s;
+            const res = await api.listApplications(params);
             setData(res);
             setPage(p);
         } catch (e) {
@@ -49,25 +52,12 @@ export default function Applications() {
     }
 
     useEffect(() => {
-        load(0);
+        load(0, query, statusFilter);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [query, statusFilter]);
 
 
     const items = data?.content ?? [];
-    const q = query.trim().toLowerCase();
-
-    const filtered = items.filter((a) => {
-        const matchesQuery =
-            !q ||
-            (a.company || "").toLowerCase().includes(q) ||
-            (a.position || "").toLowerCase().includes(q);
-
-        const matchesStatus =
-            statusFilter === "ALL" || a.status === statusFilter;
-
-        return matchesQuery && matchesStatus;
-    });
 
     function updateRow(id, patch) {
         setData((prev) => {
@@ -174,7 +164,7 @@ export default function Applications() {
                             )}
 
                             <span className="smallMuted" style={{marginLeft: "auto"}}>
-                                    Showing {filtered.length} / {items.length}
+                                    Showing {items.length}
                             </span>
                         </div>
 
@@ -190,7 +180,7 @@ export default function Applications() {
                                 </tr>
                                 </thead>
                                 <tbody>
-                                {filtered.map((a) => (
+                                {items.map((a) => (
                                     <tr key={a.id}
                                         onClick={() => nav(`/applications/${a.id}/edit`)}
                                         style={{ cursor: "pointer" }}
@@ -268,7 +258,7 @@ export default function Applications() {
                                     </tr>
                                 ))}
 
-                                {filtered.length === 0 && (
+                                {items.length === 0 && (
                                     <tr>
                                         <td colSpan="5" style={{color: "var(--muted)"}}>
                                             No results. Try changing your search or filters.

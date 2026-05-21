@@ -3,6 +3,7 @@ package com.fathallah.jobapplicationtracker.application.service;
 import com.fathallah.jobapplicationtracker.application.domain.ApplicationStatus;
 import com.fathallah.jobapplicationtracker.application.domain.JobApplication;
 import com.fathallah.jobapplicationtracker.application.repository.JobApplicationRepository;
+import com.fathallah.jobapplicationtracker.application.repository.JobApplicationSpecs;
 import com.fathallah.jobapplicationtracker.security.auth.CurrentUser;
 import com.fathallah.jobapplicationtracker.security.repository.UserRepository;
 import com.fathallah.jobapplicationtracker.application.web.dto.UpdateJobApplicationRequest;
@@ -10,6 +11,7 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,8 +43,12 @@ public class JobApplicationService {
     }
 
     @Transactional(readOnly = true)
-    public Page<JobApplication> getAllMine(Pageable pageable) {
-        return repository.findAllByOwner_Id(currentUser.id(), pageable);
+    public Page<JobApplication> getAllMine(String query, ApplicationStatus status, Pageable pageable) {
+        var spec = Specification
+                .where(JobApplicationSpecs.hasOwner(currentUser.id()))
+                .and(JobApplicationSpecs.companyOrPositionContains(query))
+                .and(JobApplicationSpecs.hasStatus(status));
+        return repository.findAll(spec, pageable);
     }
 
     private JobApplication requireOwner(Long id) {

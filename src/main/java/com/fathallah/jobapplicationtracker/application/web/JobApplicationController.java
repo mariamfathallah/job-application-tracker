@@ -1,5 +1,6 @@
 package com.fathallah.jobapplicationtracker.application.web;
 
+import com.fathallah.jobapplicationtracker.application.domain.ApplicationStatus;
 import com.fathallah.jobapplicationtracker.application.domain.JobApplication;
 import com.fathallah.jobapplicationtracker.application.service.JobApplicationService;
 import com.fathallah.jobapplicationtracker.application.web.dto.*;
@@ -36,8 +37,11 @@ public class JobApplicationController {
     }
 
     @GetMapping
-    public PageResponse<JobApplicationDto> list(@PageableDefault(size = 20) @ParameterObject Pageable pageable){
-        var page = service.getAllMine(pageable); //returns Page<JobApplication>
+    public PageResponse<JobApplicationDto> list(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) ApplicationStatus status,
+            @PageableDefault(size = 20) @ParameterObject Pageable pageable){
+        var page = service.getAllMine(q, status, pageable); //returns Page<JobApplication>
         return PageResponse.of(page.map(JobApplicationDto::from)); //or mapper
     }
 
