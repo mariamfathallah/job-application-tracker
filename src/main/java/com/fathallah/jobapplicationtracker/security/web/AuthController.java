@@ -9,6 +9,11 @@ import com.fathallah.jobapplicationtracker.security.JwtService;
 import com.fathallah.jobapplicationtracker.security.dto.AuthResponse;
 import com.fathallah.jobapplicationtracker.security.dto.LoginRequest;
 import com.fathallah.jobapplicationtracker.security.dto.RegisterRequest;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +26,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Set;
 
 @Slf4j
+@Tag(name = "Auth", description = "Register, log in, and log out")
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
@@ -41,6 +47,17 @@ public class AuthController {
         this.tokenBlacklistService = tokenBlacklistService;
     }
 
+    @Operation(
+            summary = "Register a new user account",
+            description = "Creates a user and returns a JWT. Password must be ≥8 chars with uppercase, lowercase, digit, and special character.",
+            security = {}
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Registered successfully — JWT returned"),
+            @ApiResponse(responseCode = "400", description = "Validation failure (weak password, blank fields)", content = @Content),
+            @ApiResponse(responseCode = "409", description = "Email already in use", content = @Content),
+            @ApiResponse(responseCode = "429", description = "Too many attempts — rate limited", content = @Content)
+    })
     @PostMapping("/register")
     @ResponseStatus(HttpStatus.CREATED)
     public AuthResponse register(@Valid @RequestBody RegisterRequest req){
@@ -66,6 +83,15 @@ public class AuthController {
         return new AuthResponse(token);
     }
 
+    @Operation(
+            summary = "Log in and receive a JWT",
+            security = {}
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Login successful — JWT returned"),
+            @ApiResponse(responseCode = "401", description = "Invalid credentials", content = @Content),
+            @ApiResponse(responseCode = "429", description = "Too many attempts — rate limited", content = @Content)
+    })
     @PostMapping("/login")
     public  AuthResponse login(@Valid @RequestBody LoginRequest req){
         authManager.authenticate(
