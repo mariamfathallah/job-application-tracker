@@ -1,0 +1,1 @@
+export const STATUSES = ["APPLIED", "INTERVIEW", "OFFER", "REJECTED"];

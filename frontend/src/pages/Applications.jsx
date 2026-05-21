@@ -3,6 +3,7 @@ import { api, clearToken } from "../api";
 import { useNavigate } from "react-router-dom";
 import AppShell from "../components/AppShell";
 import toast from "react-hot-toast";
+import { STATUSES } from "../constants/statuses.js";
 
 
 function formatDate(iso) {
@@ -155,7 +156,7 @@ export default function Applications() {
                                 onChange={(e) => setStatusFilter(e.target.value)}
                             >
                                 <option value="ALL">All statuses</option>
-                                {["APPLIED", "INTERVIEW", "OFFER", "REJECTED"].map((s) => (
+                                {STATUSES.map((s) => (
                                     <option key={s} value={s}>{s}</option>
                                 ))}
                             </select>
@@ -223,7 +224,7 @@ export default function Applications() {
                                                     }
                                                 }}
                                             >
-                                                {["APPLIED", "INTERVIEW", "OFFER", "REJECTED"].map(s => (
+                                                {STATUSES.map(s => (
                                                     <option key={s} value={s}>{s}</option>
                                                 ))}
                                             </select>

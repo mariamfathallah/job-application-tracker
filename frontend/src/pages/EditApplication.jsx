@@ -3,8 +3,7 @@ import { api } from "../api";
 import { useNavigate, useParams } from "react-router-dom";
 import AppShell from "../components/AppShell";
 import toast from "react-hot-toast";
-
-const STATUSES = ["APPLIED", "INTERVIEW", "OFFER", "REJECTED"];
+import { STATUSES } from "../constants/statuses.js";
 
 export default function EditApplication() {
     const nav = useNavigate();
