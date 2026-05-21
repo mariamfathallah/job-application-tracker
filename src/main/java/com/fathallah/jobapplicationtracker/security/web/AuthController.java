@@ -1,5 +1,6 @@
 package com.fathallah.jobapplicationtracker.security.web;
 
+import com.fathallah.jobapplicationtracker.security.TokenBlacklistService;
 import com.fathallah.jobapplicationtracker.security.domain.RoleName;
 import com.fathallah.jobapplicationtracker.security.domain.User;
 import com.fathallah.jobapplicationtracker.security.repository.RoleRepository;
@@ -8,6 +9,7 @@ import com.fathallah.jobapplicationtracker.security.JwtService;
 import com.fathallah.jobapplicationtracker.security.dto.AuthResponse;
 import com.fathallah.jobapplicationtracker.security.dto.LoginRequest;
 import com.fathallah.jobapplicationtracker.security.dto.RegisterRequest;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -28,13 +30,15 @@ public class AuthController {
     private final PasswordEncoder encoder;
     private final AuthenticationManager authManager;
     private final JwtService jwtService;
+    private final TokenBlacklistService tokenBlacklistService;
 
-    public AuthController(UserRepository users, RoleRepository roles, PasswordEncoder encoder, AuthenticationManager authManager, JwtService jwtService){
+    public AuthController(UserRepository users, RoleRepository roles, PasswordEncoder encoder, AuthenticationManager authManager, JwtService jwtService, TokenBlacklistService tokenBlacklistService){
         this.users = users;
         this.roles = roles;
         this.encoder = encoder;
         this.authManager = authManager;
         this.jwtService = jwtService;
+        this.tokenBlacklistService = tokenBlacklistService;
     }
 
     @PostMapping("/register")
@@ -75,6 +79,17 @@ public class AuthController {
         String token = jwtService.generateToken(user.getEmail(), roleNames);
 
         return new AuthResponse(token);
+    }
+
+    @PostMapping("/logout")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void logout(HttpServletRequest request) {
+        String header = request.getHeader("Authorization");
+        if (header != null && header.startsWith("Bearer ")) {
+            String jti = jwtService.extractJti(header.substring(7));
+            tokenBlacklistService.invalidate(jti);
+            log.info("Token blacklisted on logout: jti={}", jti);
+        }
     }
 
 

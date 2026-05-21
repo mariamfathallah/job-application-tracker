@@ -45,12 +45,10 @@ public class SecurityConfig {
                                     res.sendError(HttpServletResponse.SC_FORBIDDEN))
                     )
                     .authorizeHttpRequests(auth -> auth
+                            .requestMatchers("/api/auth/register", "/api/auth/login").permitAll()
                             .requestMatchers(
-                                    "/api/auth/**",
-                                    "/swagger-ui.html", "/swagger-ui/**",
-                                    "/v3/api-docs/**"
-                            )
-                            .permitAll()
+                                    "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**"
+                            ).permitAll()
                             .requestMatchers("/api/applications","/api/applications/**").hasRole("USER")
                             .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                             .anyRequest().authenticated()

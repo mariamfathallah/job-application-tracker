@@ -11,6 +11,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class JwtService {
@@ -32,6 +33,7 @@ public class JwtService {
 
         return Jwts.builder()
                 .subject(username)
+                .id(UUID.randomUUID().toString())
                 .claim("roles", roles)
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(exp))
@@ -44,5 +46,9 @@ public class JwtService {
                 .verifyWith((javax.crypto.SecretKey) key)
                 .build()
                 .parseSignedClaims(token);
+    }
+
+    public String extractJti(String token) {
+        return parseAndValidate(token).getPayload().getId();
     }
 }
