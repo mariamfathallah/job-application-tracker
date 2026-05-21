@@ -28,4 +28,7 @@ CREATE TABLE job_applications (
     notes        VARCHAR(2000),
     owner_id     BIGINT       NOT NULL REFERENCES users(id)
 );
---rollback DROP TABLE job_applications; DROP TABLE user_roles; DROP TABLE users; DROP TABLE roles;
+--rollback DROP TABLE job_applications;
+--rollback DROP TABLE user_roles;
+--rollback DROP TABLE users;
+--rollback DROP TABLE roles;
