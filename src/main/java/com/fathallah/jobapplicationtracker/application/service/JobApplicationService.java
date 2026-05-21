@@ -7,11 +7,14 @@ import com.fathallah.jobapplicationtracker.security.auth.CurrentUser;
 import com.fathallah.jobapplicationtracker.security.repository.UserRepository;
 import com.fathallah.jobapplicationtracker.application.web.dto.UpdateJobApplicationRequest;
 import jakarta.persistence.EntityNotFoundException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 public class JobApplicationService {
 
@@ -31,7 +34,10 @@ public class JobApplicationService {
     public JobApplication create(JobApplication application) {
         var owner = userRepo.getReferenceById(currentUser.id());
         application.setOwner(owner);
-        return repository.save(application);
+        var saved = repository.save(application);
+        log.info("User {} created application {} for '{}'", currentUser.id(),
+                saved.getId(), saved.getCompany());
+        return saved;
     }
 
     @Transactional(readOnly = true)
@@ -41,9 +47,13 @@ public class JobApplicationService {
 
     private JobApplication requireOwner(Long id) {
         var app = repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Application not found: " + id));
+                .orElseThrow(() -> {
+                    log.warn("Application {} not found", id);
+                    return new EntityNotFoundException("Application not found: " + id);
+                });
         if (!app.getOwner().getId().equals(currentUser.id())) {
-            throw new org.springframework.security.access.AccessDeniedException("Not owner");
+            log.warn("User {} attempted to access application {} owned by {}", currentUser.id(), id, app.getOwner().getId());
+            throw new AccessDeniedException("Not owner");
         }
         return app;
     }
@@ -54,11 +64,15 @@ public class JobApplicationService {
     }
 
     public void deleteById(Long id){
-        repository.delete(requireOwner(id));
+        var app = requireOwner(id);
+        repository.delete(app);
+        log.info("User {} deleted application {}", currentUser.id(), id);
+
     }
 
     public JobApplication updateStatus(Long id, ApplicationStatus status){
         var app = requireOwner(id);
+        log.info("User {} changed application {} status to {}", currentUser.id(), id, status);
         app.setStatus(status);
         return repository.save(app);
     }

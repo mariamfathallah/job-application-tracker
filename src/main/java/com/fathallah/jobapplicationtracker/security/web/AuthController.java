@@ -9,6 +9,7 @@ import com.fathallah.jobapplicationtracker.security.dto.AuthResponse;
 import com.fathallah.jobapplicationtracker.security.dto.LoginRequest;
 import com.fathallah.jobapplicationtracker.security.dto.RegisterRequest;
 import jakarta.validation.Valid;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Set;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
@@ -39,6 +41,7 @@ public class AuthController {
     @ResponseStatus(HttpStatus.CREATED)
     public AuthResponse register(@Valid @RequestBody RegisterRequest req){
         if (users.existsByEmail(req.email())){
+            log.warn("Registration failed, email already exists: {}", req.email());
             throw new IllegalArgumentException("Email already exists");
         }
 
@@ -52,6 +55,7 @@ public class AuthController {
                 .build();
 
         users.save(user);
+        log.info("New user registered: {}", req.email());
 
         var roleNames = user.getRoles().stream().map(r -> r.getName().name()).toList();
         String token = jwtService.generateToken(user.getEmail(), roleNames);
@@ -65,6 +69,7 @@ public class AuthController {
         );
 
         var user = users.findByEmail(req.email()).orElseThrow();
+        log.info("User logged in: {}", req.email());
 
         var roleNames = user.getRoles().stream().map(r -> r.getName().name()).toList();
         String token = jwtService.generateToken(user.getEmail(), roleNames);
