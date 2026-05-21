@@ -1,5 +1,6 @@
 package com.fathallah.jobapplicationtracker.security.web;
 
+import com.fathallah.jobapplicationtracker.security.EmailAlreadyExistsException;
 import com.fathallah.jobapplicationtracker.security.TokenBlacklistService;
 import com.fathallah.jobapplicationtracker.security.domain.RoleName;
 import com.fathallah.jobapplicationtracker.security.domain.User;
@@ -63,7 +64,7 @@ public class AuthController {
     public AuthResponse register(@Valid @RequestBody RegisterRequest req){
         if (users.existsByEmail(req.email())){
             log.warn("Registration failed, email already exists: {}", req.email());
-            throw new IllegalArgumentException("Email already exists");
+            throw new EmailAlreadyExistsException(req.email());
         }
 
         var userRole = roles.findByName(RoleName.ROLE_USER).orElseThrow();

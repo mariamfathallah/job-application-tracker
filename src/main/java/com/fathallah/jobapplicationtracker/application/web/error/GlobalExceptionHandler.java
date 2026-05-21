@@ -1,5 +1,6 @@
 package com.fathallah.jobapplicationtracker.application.web.error;
 
+import com.fathallah.jobapplicationtracker.security.EmailAlreadyExistsException;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
@@ -16,6 +17,20 @@ import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    //409
+    @ExceptionHandler(EmailAlreadyExistsException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ApiError handleEmailConflict(EmailAlreadyExistsException ex, HttpServletRequest request) {
+        return new ApiError(
+                Instant.now(),
+                409,
+                "Conflict",
+                ex.getMessage(),
+                request.getRequestURI(),
+                null
+        );
+    }
 
     //404
     @ExceptionHandler(EntityNotFoundException.class)

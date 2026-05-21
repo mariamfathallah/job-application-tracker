@@ -74,4 +74,26 @@ class RegisterEndpointTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.validationErrors.password").isNotEmpty());
     }
+
+    @Test
+    void duplicateEmail_shouldReturn409_withMessage() throws Exception {
+        String body = """
+        {"email":"dup@example.com","password":"ValidPass1!","displayName":"First"}
+    """;
+
+        // first registration succeeds
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isCreated());
+
+        // second registration with same email → 409
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.error").value("Conflict"))
+                .andExpect(jsonPath("$.message").isNotEmpty());
+    }
 }
