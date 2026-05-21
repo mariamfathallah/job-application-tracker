@@ -30,11 +30,14 @@ export default function Applications() {
 
     const [deleteBusy, setDeleteBusy] = useState(false);
 
-    async function load(p = 0, q = query, s = statusFilter) {
+    const [sort, setSort] = useState("dateApplied,desc");
+    const [size, setSize] = useState(10);
+
+    async function load(p = 0, q = query, s = statusFilter, so = sort, sz = size) {
         setErr("");
         setPageLoading(true);
         try {
-            const params =  { page: p, size: 5, sort: "dateApplied,desc"};
+            const params =  { page: p, size: sz, sort: so};
             if (q) params.q = q;
             if (s !== "ALL") params.status = s;
             const res = await api.listApplications(params);
@@ -52,9 +55,9 @@ export default function Applications() {
     }
 
     useEffect(() => {
-        load(0, query, statusFilter);
+        load(0, query, statusFilter, sort, size);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [query, statusFilter]);
+    }, [query, statusFilter, sort, size]);
 
 
     const items = data?.content ?? [];
@@ -150,6 +153,29 @@ export default function Applications() {
                                     <option key={s} value={s}>{s}</option>
                                 ))}
                             </select>
+
+                            <select
+                                className="select selectSm"
+                                value={sort}
+                                onChange={(e) => setSort(e.target.value)}
+                                >
+                                <option value="dateApplied,desc">Date ↓</option>
+                                <option value="dateApplied,asc">Date ↑</option>
+                                <option value="company,asc">Company A→Z</option>
+                                <option value="company,desc">Company Z→A</option>
+                                <option value="status,asc">Status A→Z</option>
+                            </select>
+
+                            <select
+                                className="select selectSm"
+                                value={size}
+                                onChange={(e) => setSize(Number(e.target.value))}
+                            >
+                                <option value={5}>5 / page</option>
+                                <option value={10}>10 / page</option>
+                                <option value={25}>25 / page</option>
+                            </select>
+
 
                             {(query || statusFilter !== "ALL") && (
                                 <button

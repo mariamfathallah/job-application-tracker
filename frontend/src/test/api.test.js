@@ -117,3 +117,32 @@ describe('error propagation', () => {
         await expect(api.createApplication({})).rejects.toThrow('500 Internal Server Error')
     })
 })
+
+describe('api.listApplications', () => {
+    beforeEach(() => {
+        setToken('jwt')
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+            ok: true,
+            status: 200,
+            text: () => Promise.resolve(JSON.stringify({ content: [], totalPages: 0 })),
+        }))
+    })
+
+    afterEach(() => vi.unstubAllGlobals())
+
+    it('passes sort and size as query params', async () => {
+        await api.listApplications({ page: 0, size: 10, sort: 'company,asc' })
+
+        const [url] = fetch.mock.calls[0]
+        expect(url).toContain('size=10')
+        expect(url).toContain('sort=company')   // URLSearchParams encodes the comma
+        expect(url).toContain('page=0')
+    })
+
+    it('does not include undefined params in the query string', async () => {
+        await api.listApplications({ page: 0, size: 5, sort: 'dateApplied,desc' })
+
+        const [url] = fetch.mock.calls[0]
+        expect(url).not.toContain('undefined')
+    })
+})
