@@ -146,3 +146,38 @@ describe('api.listApplications', () => {
         expect(url).not.toContain('undefined')
     })
 })
+
+describe('api.getApplication', () => {
+    beforeEach(() => {
+        setToken('jwt')
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+            ok: true,
+            status: 200,
+            text: () => Promise.resolve(JSON.stringify({
+                id: 7,
+                company: 'Acme',
+                position: 'Engineer',
+                status: 'APPLIED',
+                dateApplied: '2026-01-15',
+                notes: 'Referred by John',
+            })),
+        }))
+    })
+
+    afterEach(() => vi.unstubAllGlobals())
+
+    it('calls GET /api/applications/:id', async () => {
+        await api.getApplication(7)
+
+        const [url, opts] = fetch.mock.calls[0]
+        expect(url).toContain('/api/applications/7')
+        expect(opts.method ?? 'GET').toBe('GET')
+    })
+
+    it('returns the full application object including notes', async () => {
+        const result = await api.getApplication(7)
+
+        expect(result.company).toBe('Acme')
+        expect(result.notes).toBe('Referred by John')
+    })
+})

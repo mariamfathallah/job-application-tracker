@@ -6,6 +6,7 @@ import NewApplication from "./pages/NewApplication";
 import { getToken } from "./api";
 import EditApplication from "./pages/EditApplication.jsx";
 import NotFound from "./pages/NotFound.jsx";
+import ApplicationDetail from "./pages/ApplicationDetail.jsx";
 
 function RequireAuth({ children }) {
     const token = getToken();
@@ -33,6 +34,14 @@ export default function App() {
                     element={
                         <RequireAuth>
                             <NewApplication />
+                        </RequireAuth>
+                    }
+                />
+                <Route
+                    path="/applications/:id"
+                    element={
+                        <RequireAuth>
+                            <ApplicationDetail />
                         </RequireAuth>
                     }
                 />

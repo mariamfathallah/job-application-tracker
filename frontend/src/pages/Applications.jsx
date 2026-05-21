@@ -208,7 +208,7 @@ export default function Applications() {
                                 <tbody>
                                 {items.map((a) => (
                                     <tr key={a.id}
-                                        onClick={() => nav(`/applications/${a.id}/edit`)}
+                                        onClick={() => nav(`/applications/${a.id}`)}
                                         style={{ cursor: "pointer" }}
                                     >
                                         <td style={{fontWeight: 700}}>{a.company}</td>
