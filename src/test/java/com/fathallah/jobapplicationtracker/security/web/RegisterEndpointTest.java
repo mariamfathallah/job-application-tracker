@@ -1,6 +1,7 @@
 package com.fathallah.jobapplicationtracker.security.web;
 
 
+import com.fathallah.jobapplicationtracker.application.repository.JobApplicationRepository;
 import com.fathallah.jobapplicationtracker.security.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -23,9 +24,12 @@ class RegisterEndpointTest {
     MockMvc mockMvc;
     @Autowired
     UserRepository userRepository;
+    @Autowired
+    JobApplicationRepository jobApplicationRepository;
 
     @BeforeEach
     void setUp() {
+        jobApplicationRepository.deleteAll();
         userRepository.deleteAll();
     }
 
