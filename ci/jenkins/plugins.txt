@@ -1,0 +1,14 @@
+workflow-aggregator
+git
+github
+github-branch-source
+workflow-multibranch
+branch-api
+junit
+credentials-binding
+configuration-as-code
+job-dsl
+sonar
+pipeline-utility-steps
+pipeline-stage-view
+htmlpublisher

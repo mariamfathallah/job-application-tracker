@@ -1,0 +1,68 @@
+# Outillage CI/CD : Jenkins (controller + agent), SonarQube, Nexus.
+# Lancement : cp .env.example .env  (puis éditer)  &&  docker compose up -d --build
+services:
+  jenkins:
+    build: ./jenkins
+    container_name: ci-jenkins
+    restart: unless-stopped
+    ports:
+      - "8090:8080"
+    environment:
+      JENKINS_ADMIN_USER: ${JENKINS_ADMIN_USER}
+      JENKINS_ADMIN_PASSWORD: ${JENKINS_ADMIN_PASSWORD}
+      JENKINS_URL: ${JENKINS_PUBLIC_URL:-http://localhost:8090/}
+      REPO_URL: ${REPO_URL}
+      SONAR_TOKEN: ${SONAR_TOKEN:-}
+      NEXUS_USER: ${NEXUS_USER:-admin}
+      NEXUS_PASSWORD: ${NEXUS_PASSWORD:-}
+    volumes:
+      - jenkins_home:/var/jenkins_home
+    depends_on: [sonarqube, nexus]
+
+  # Les builds tournent ici, jamais sur le controller (0 executor).
+  agent:
+    build: ./agent
+    container_name: ci-agent
+    restart: unless-stopped
+    user: root
+    environment:
+      JENKINS_URL: http://jenkins:8080
+      JENKINS_AGENT_NAME: agent-1
+      JENKINS_ADMIN_USER: ${JENKINS_ADMIN_USER}
+      JENKINS_ADMIN_PASSWORD: ${JENKINS_ADMIN_PASSWORD}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      # même chemin côté hôte Docker et côté agent (docker-out-of-docker)
+      - /tmp/jenkins-agent:/tmp/jenkins-agent
+      - m2_cache:/root/.m2
+      - npm_cache:/root/.npm
+    depends_on: [jenkins]
+
+  sonarqube:
+    image: sonarqube:lts-community
+    container_name: ci-sonarqube
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+    environment:
+      SONAR_SEARCH_JAVAADDITIONALOPTS: "-Dnode.store.allow_mmap=false"
+    volumes:
+      - sonar_data:/opt/sonarqube/data
+      - sonar_extensions:/opt/sonarqube/extensions
+
+  nexus:
+    image: sonatype/nexus3
+    container_name: ci-nexus
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    volumes:
+      - nexus_data:/nexus-data
+
+volumes:
+  jenkins_home:
+  m2_cache:
+  npm_cache:
+  sonar_data:
+  sonar_extensions:
+  nexus_data:

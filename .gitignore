@@ -66,3 +66,6 @@ docker-compose.override.yml
 frontend/node_modules/
 frontend/dist/
 frontend/.env.local
+
+# CI secrets
+ci/.env

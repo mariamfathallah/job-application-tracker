@@ -1,0 +1,55 @@
+jenkins:
+  systemMessage: "Jenkins CI/CD - configuré par JCasC (ci/jenkins/casc.yaml)"
+  numExecutors: 0            # le controller ne build jamais
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: "${JENKINS_ADMIN_USER}"
+          password: "${JENKINS_ADMIN_PASSWORD}"
+  authorizationStrategy:
+    loggedInUsersCanDoAnything:
+      allowAnonymousRead: false
+  nodes:
+    - permanent:
+        name: "agent-1"
+        remoteFS: "/tmp/jenkins-agent"
+        numExecutors: 3
+        labelString: "build docker"
+        launcher:
+          inbound:
+            webSocket: true
+unclassified:
+  location:
+    url: "${JENKINS_URL}"
+  sonarGlobalConfiguration:
+    installations:
+      - name: "sonar"
+        serverUrl: "http://sonarqube:9000"
+        credentialsId: "sonar-token"
+credentials:
+  system:
+    domainCredentials:
+      - credentials:
+          - string:
+              scope: GLOBAL
+              id: "sonar-token"
+              secret: "${SONAR_TOKEN:-}"
+          - usernamePassword:
+              scope: GLOBAL
+              id: "nexus-creds"
+              username: "${NEXUS_USER:-admin}"
+              password: "${NEXUS_PASSWORD:-}"
+jobs:
+  - script: >
+      multibranchPipelineJob('job-application-tracker') {
+        branchSources {
+          github {
+            id('job-application-tracker')
+            repoOwner('mariamfathallah')
+            repository('job-application-tracker')
+          }
+        }
+        orphanedItemStrategy { discardOldItems { numToKeep(10) } }
+        triggers { periodicFolderTrigger { interval('5m') } }
+      }
