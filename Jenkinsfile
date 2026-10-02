@@ -8,6 +8,7 @@ pipeline {
   }
 
   environment {
+    DEPLOY_BRANCH = 'feature/ci-jenkins'   // branche qui déclenche staging et production
     NEXUS_URL = 'http://nexus:8081'
     NEXUS_CREDS = credentials('nexus-creds')   // expose NEXUS_CREDS_USR / NEXUS_CREDS_PSW
   }
@@ -65,14 +66,14 @@ pipeline {
     }
 
     stage('Deploy staging') {
-      when { branch 'main' }
+      when { expression { env.BRANCH_NAME == env.DEPLOY_BRANCH } }
       steps {
         sh 'NEXUS_URL=$NEXUS_URL NEXUS_USER=$NEXUS_CREDS_USR NEXUS_PASSWORD=$NEXUS_CREDS_PSW sh ci/scripts/deploy.sh staging "$VERSION"'
       }
     }
 
     stage('Deploy production') {
-      when { branch 'main' }
+      when { expression { env.BRANCH_NAME == env.DEPLOY_BRANCH } }
       steps {
         input message: "Déployer ${env.VERSION} en production ?", submitter: 'admin'
         sh 'NEXUS_URL=$NEXUS_URL NEXUS_USER=$NEXUS_CREDS_USR NEXUS_PASSWORD=$NEXUS_CREDS_PSW sh ci/scripts/deploy.sh production "$VERSION"'
