@@ -49,11 +49,9 @@ jobs:
   - script: >
       multibranchPipelineJob('job-application-tracker') {
         branchSources {
-          github {
+          git {
             id('job-application-tracker')
-            repoOwner('mariamfathallah')
-            repository('job-application-tracker')
-            credentialsId('github-token')
+            remote('${REPO_URL}')
           }
         }
         orphanedItemStrategy { discardOldItems { numToKeep(10) } }
