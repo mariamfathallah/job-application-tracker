@@ -2,7 +2,7 @@ pipeline {
   agent { label 'build' }          // jamais le controller
 
   options {
-    timeout(time: 10, unit: 'MINUTES')
+    timeout(time: 60, unit: 'MINUTES')   // inclut l'attente de validation manuelle
     buildDiscarder(logRotator(numToKeepStr: '20'))
     disableConcurrentBuilds(abortPrevious: true)
   }
@@ -75,7 +75,9 @@ pipeline {
     stage('Deploy production') {
       when { expression { env.BRANCH_NAME == env.DEPLOY_BRANCH } }
       steps {
-        input message: "Déployer ${env.VERSION} en production ?", submitter: 'admin'
+        timeout(time: 30, unit: 'MINUTES') {
+          input message: "Déployer ${env.VERSION} en production ?", submitter: 'admin'
+        }
         sh 'NEXUS_URL=$NEXUS_URL NEXUS_USER=$NEXUS_CREDS_USR NEXUS_PASSWORD=$NEXUS_CREDS_PSW sh ci/scripts/deploy.sh production "$VERSION"'
       }
     }
