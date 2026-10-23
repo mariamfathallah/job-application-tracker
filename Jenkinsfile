@@ -39,7 +39,7 @@ pipeline {
     stage('SonarQube') {
       steps {
         withSonarQubeEnv('sonar') {
-          sh './mvnw -B -DskipTests verify sonar:sonar -Dsonar.projectKey=job-application-tracker'
+          sh './mvnw -B -DskipTests verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=job-application-tracker'
         }
       }
     }

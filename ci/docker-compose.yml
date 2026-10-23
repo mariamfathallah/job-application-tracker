@@ -33,7 +33,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       # même chemin côté hôte Docker et côté agent (docker-out-of-docker)
-      - /tmp/jenkins-agent:/tmp/jenkins-agent
+      - /opt/jenkins-agent:/opt/jenkins-agent
       - m2_cache:/root/.m2
       - npm_cache:/root/.npm
     depends_on: [jenkins]

@@ -13,7 +13,7 @@ jenkins:
   nodes:
     - permanent:
         name: "agent-1"
-        remoteFS: "/tmp/jenkins-agent"
+        remoteFS: "/opt/jenkins-agent"
         numExecutors: 3
         labelString: "build docker"
         launcher:
