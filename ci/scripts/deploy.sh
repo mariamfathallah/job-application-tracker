@@ -8,7 +8,7 @@ case "$ENVIRONMENT" in staging) PORT=8082;; production) PORT=8083;; *) echo "env
 NEXUS_URL=${NEXUS_URL:-http://nexus:8081}
 APP="tracker-$ENVIRONMENT"; DB="tracker-db-$ENVIRONMENT"; NET="tracker-net-$ENVIRONMENT"
 
-rand() { head -c 24 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 40; }
+rand() { head -c 64 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 40; }
 # lit une variable d'environnement d'un conteneur existant (pour conserver les secrets d'un déploiement à l'autre)
 existing() { docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "$1" 2>/dev/null | sed -n "s/^$2=//p" | head -n1 || true; }
 
@@ -28,7 +28,7 @@ if ! docker inspect "$DB" >/dev/null 2>&1; then
 fi
 for i in $(seq 1 30); do docker exec "$DB" pg_isready -U jobtracker >/dev/null 2>&1 && break; sleep 2; done
 
-JWT_SECRET=$(existing "$APP" JWT_SECRET); [ -n "$JWT_SECRET" ] || JWT_SECRET=$(rand)
+JWT_SECRET=$(existing "$APP" JWT_SECRET); [ "${#JWT_SECRET}" -ge 32 ] || JWT_SECRET=$(rand)
 docker rm -f "$APP" >/dev/null 2>&1 || true
 docker run -d --name "$APP" --network "$NET" --restart unless-stopped -p "$PORT:8080" \
   -e SPRING_PROFILES_ACTIVE=prod \
