@@ -37,6 +37,11 @@ credentials:
               secret: "${SONAR_TOKEN:-}"
           - usernamePassword:
               scope: GLOBAL
+              id: "github-token"
+              username: "${GITHUB_USER:-none}"
+              password: "${GITHUB_TOKEN:-none}"
+          - usernamePassword:
+              scope: GLOBAL
               id: "nexus-creds"
               username: "${NEXUS_USER:-admin}"
               password: "${NEXUS_PASSWORD:-}"
@@ -48,6 +53,7 @@ jobs:
             id('job-application-tracker')
             repoOwner('mariamfathallah')
             repository('job-application-tracker')
+            credentialsId('github-token')
           }
         }
         orphanedItemStrategy { discardOldItems { numToKeep(10) } }
