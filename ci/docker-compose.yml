@@ -11,7 +11,6 @@ services:
       JENKINS_ADMIN_USER: ${JENKINS_ADMIN_USER}
       JENKINS_ADMIN_PASSWORD: ${JENKINS_ADMIN_PASSWORD}
       JENKINS_URL: ${JENKINS_PUBLIC_URL:-http://localhost:8090/}
-      REPO_URL: ${REPO_URL}
       GITHUB_USER: ${GITHUB_USER:-}
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
       SONAR_TOKEN: ${SONAR_TOKEN:-}
@@ -41,6 +40,14 @@ services:
       - tf_state:/tfstate                               # état OpenTofu (contient des secrets, hors Git)
       - tf_plugins:/root/.terraform.d/plugin-cache
     depends_on: [jenkins]
+
+  # Relais des webhooks GitHub vers Jenkins (Jenkins n'est pas joignable depuis Internet)
+  smee:
+    image: node:22-alpine
+    container_name: ci-smee
+    restart: unless-stopped
+    command: npx --yes smee-client --url ${SMEE_URL} --target http://jenkins:8080/github-webhook/
+    depends_on: [ jenkins ]
 
   sonarqube:
     image: sonarqube:lts-community
