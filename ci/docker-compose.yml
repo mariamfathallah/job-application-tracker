@@ -38,6 +38,8 @@ services:
       - /opt/jenkins-agent:/opt/jenkins-agent
       - m2_cache:/root/.m2
       - npm_cache:/root/.npm
+      - tf_state:/tfstate                               # état OpenTofu (contient des secrets, hors Git)
+      - tf_plugins:/root/.terraform.d/plugin-cache
     depends_on: [jenkins]
 
   sonarqube:
@@ -65,6 +67,8 @@ volumes:
   jenkins_home:
   m2_cache:
   npm_cache:
+  tf_state:
+  tf_plugins:
   sonar_data:
   sonar_extensions:
   nexus_data:

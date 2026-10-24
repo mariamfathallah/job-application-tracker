@@ -10,6 +10,7 @@ pipeline {
   environment {
     DEPLOY_BRANCH = 'feature/ci-jenkins'   // branche qui déclenche staging et production
     NEXUS_URL = 'http://nexus:8081'
+    GITHUB_REPO = 'mariamfathallah/job-application-tracker'   // pour publier le plan d'infra sur les PR
     NEXUS_CREDS = credentials('nexus-creds')   // expose NEXUS_CREDS_USR / NEXUS_CREDS_PSW
   }
 
@@ -65,9 +66,29 @@ pipeline {
       }
     }
 
+    // Environnements as Code : OpenTofu décrit staging/production (infra/terraform),
+    // Ansible y installe l'application (infra/ansible). Le plan est calculé sur chaque branche.
+    stage('Infra plan') {
+      steps {
+        sh 'sh ci/scripts/infra.sh plan staging'
+        sh 'sh ci/scripts/infra.sh plan production'
+        archiveArtifacts artifacts: 'infra/terraform/plan-*.txt'
+      }
+    }
+
+    stage('Publish plan on PR') {
+      when { changeRequest() }
+      steps {
+        withCredentials([usernamePassword(credentialsId: 'github-token', usernameVariable: 'GH_USER', passwordVariable: 'GH_TOKEN')]) {
+          sh 'sh ci/scripts/comment-plan.sh'
+        }
+      }
+    }
+
     stage('Deploy staging') {
       when { expression { env.BRANCH_NAME == env.DEPLOY_BRANCH } }
       steps {
+        sh 'sh ci/scripts/infra.sh apply staging'
         sh 'NEXUS_URL=$NEXUS_URL NEXUS_USER=$NEXUS_CREDS_USR NEXUS_PASSWORD=$NEXUS_CREDS_PSW sh ci/scripts/deploy.sh staging "$VERSION"'
       }
     }
@@ -76,8 +97,9 @@ pipeline {
       when { expression { env.BRANCH_NAME == env.DEPLOY_BRANCH } }
       steps {
         timeout(time: 30, unit: 'MINUTES') {
-          input message: "Déployer ${env.VERSION} en production ?", submitter: 'admin'
+          input message: "Déployer ${env.VERSION} en production ? (plan d'infra : artefact plan-production.txt)", submitter: 'admin'
         }
+        sh 'sh ci/scripts/infra.sh apply production'   // applique exactement le plan validé
         sh 'NEXUS_URL=$NEXUS_URL NEXUS_USER=$NEXUS_CREDS_USR NEXUS_PASSWORD=$NEXUS_CREDS_PSW sh ci/scripts/deploy.sh production "$VERSION"'
       }
     }
