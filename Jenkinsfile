@@ -49,7 +49,7 @@ pipeline {
       steps {
         withSonarQubeEnv('sonar') {
           sh './mvnw -B -DskipTests org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=job-application-tracker'
-        }s
+        }
       }
     }
     stage('Quality Gate') {
