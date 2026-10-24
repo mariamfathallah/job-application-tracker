@@ -69,3 +69,11 @@ frontend/.env.local
 
 # CI secrets
 ci/.env
+
+# OpenTofu : état, plans et dossiers d init (contiennent des secrets ou sont générés)
+.terraform/
+.terraform-*/
+*.tfstate
+*.tfstate.*
+*.tfplan
+infra/terraform/plan-*.txt

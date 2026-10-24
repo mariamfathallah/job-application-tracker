@@ -35,7 +35,8 @@ git push ─► Jenkins (controller, 0 executor) ─► agent-1 (JDK 21, Node 22
 Fichiers clés :
 - `Jenkinsfile` : le pipeline. Variable `DEPLOY_BRANCH` = branche qui déploie.
 - `ci/docker-compose.yml`, `ci/jenkins/casc.yaml` (config Jenkins as Code), `ci/jenkins/plugins.txt`
-- `ci/scripts/deploy.sh` (déploiement idempotent), `bootstrap-nexus.sh`, `bootstrap-sonar.sh`
+- `ci/scripts/deploy.sh` (déploie une version via Ansible), `infra.sh` (OpenTofu), `bootstrap-nexus.sh`, `bootstrap-sonar.sh`
+- `infra/terraform` (environnements décrits avec OpenTofu), `infra/ansible` (déploiement de l'appli) — voir `infra/README.md`
 
 ---
 
@@ -125,13 +126,14 @@ Module Qualité et retour rapide (niveau 1) :
 - [ ] Notification de **chaque build** (Slack, Discord ou e-mail)
 - [ ] Pipeline **< 10 min** : parallélisme + cache (cache Maven/npm déjà en volumes, à mesurer)
 
-### B — Environnements as Code (niveau 3)
-- [ ] Staging et prod décrits en **Terraform/OpenTofu** (réseaux, conteneurs/VM)
-- [ ] Configuration par **Ansible** (déploiement de l'appli et de la base)
-- [ ] `terraform plan` **publié sur la pull request**
-- [ ] `apply` exécuté par le pipeline **après validation**
-- [ ] État (state) et secrets hors du dépôt (credentials Jenkins)
-- [ ] Interface avec D : B fournit les environnements, D gère la façon d'y déployer (voir §6)
+### B — Environnements as Code (niveau 3) — détails dans `infra/README.md`
+- [x] Staging et prod décrits en **OpenTofu** (réseau, volume, PostgreSQL, secrets) — `infra/terraform`
+- [x] Configuration par **Ansible** (déploiement de l'appli, healthcheck) — `infra/ansible`
+- [x] Plan calculé à chaque build et archivé ; étape de publication sur la PR prête
+- [ ] Plan **effectivement publié sur une PR** : nécessite la source GitHub + token (rôle D)
+- [x] `apply` exécuté par le pipeline **après validation** (fusion pour staging, `input` pour la prod), sur le plan enregistré
+- [x] État et secrets hors du dépôt (volume `tf_state` de l'agent, `.gitignore`)
+- [x] Interface avec D : `ci/scripts/deploy.sh <env> <version>` inchangé ; le blue/green se fait dans `infra/ansible/deploy.yml`
 
 ### C — Observabilité et DORA (niveau 3)
 - [ ] Prometheus + Grafana ajoutés à la stack (`ci/docker-compose.yml`)
@@ -177,7 +179,7 @@ Module Blue/green (niveau 2) :
 | 4 | Rapport, README, relectures croisées, répétitions | prévoir une marge avant la soutenance |
 
 ### Interface B ↔ D (à fixer ensemble)
-`ci/scripts/deploy.sh <env> <version>` est le point de contact : B décrit/crée les environnements (Terraform/Ansible), D change la stratégie de déploiement (blue/green). Convenir ensemble des noms d'hôtes, ports et de la manière dont le script reçoit sa cible, **avant** de coder chacun de son côté.
+`ci/scripts/deploy.sh <env> <version>` est le point de contact (fait par B) : OpenTofu fournit réseau, base et secrets via ses outputs, Ansible (`infra/ansible/deploy.yml`) installe l'appli. Pour le blue/green, D modifie le playbook (deux conteneurs + reverse proxy) et, si besoin, ajoute des ressources dans `infra/terraform/main.tf` (ex. le proxy) en accord avec B.
 
 ---
 
