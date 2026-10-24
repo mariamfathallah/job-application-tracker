@@ -12,3 +12,4 @@ sonar
 pipeline-utility-steps
 pipeline-stage-view
 htmlpublisher
+coverage
