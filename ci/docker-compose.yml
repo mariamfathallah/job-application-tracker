@@ -46,7 +46,7 @@ services:
     image: node:22-alpine
     container_name: ci-smee
     restart: unless-stopped
-    command: npx --yes smee-client --url ${SMEE_URL} --target http://jenkins:8080/github-webhook/
+    command: npx --yes smee-client@2.0.4 --url ${SMEE_URL} --target http://jenkins:8080/github-webhook/
     depends_on: [ jenkins ]
 
   sonarqube:
