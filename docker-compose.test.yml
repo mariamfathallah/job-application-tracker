@@ -1,0 +1,28 @@
+services:
+  postgres-test:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: jobtracker
+      POSTGRES_USER: jobtracker
+      POSTGRES_PASSWORD: testpass
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jobtracker -d jobtracker"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  app-test:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-test:5432/jobtracker
+      SPRING_DATASOURCE_USERNAME: jobtracker
+      SPRING_DATASOURCE_PASSWORD: testpass
+      JWT_SECRET: test-secret-test-secret-test-secret-test-secret-test-secret
+    ports:
+      - "18080:8080"
