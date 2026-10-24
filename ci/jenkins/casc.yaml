@@ -49,9 +49,21 @@ jobs:
   - script: >
       multibranchPipelineJob('job-application-tracker') {
         branchSources {
-          git {
-            id('job-application-tracker')
-            remote('${REPO_URL}')
+          branchSource {
+            source {
+              github {
+                id('job-application-tracker')
+                repoOwner('mariamfathallah')
+                repository('job-application-tracker')
+                repositoryUrl('https://github.com/mariamfathallah/job-application-tracker')
+                configuredByUrl(true)
+                credentialsId('github-token')
+                traits {
+                  gitHubBranchDiscovery { strategyId(1) }      // branches (except those already opened as a PR)
+                  gitHubPullRequestDiscovery { strategyId(1) } // PRs, built merged with their target branch
+                }
+              }
+            }
           }
         }
         orphanedItemStrategy { discardOldItems { numToKeep(10) } }
