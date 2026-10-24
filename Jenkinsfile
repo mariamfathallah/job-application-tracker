@@ -19,9 +19,17 @@ pipeline {
       parallel {
         stage('Backend') {
           steps {
-            sh 'chmod +x mvnw && ./mvnw -B test'
+            sh 'chmod +x mvnw && ./mvnw -B verify'
           }
-          post { always { junit 'target/surefire-reports/*.xml' } }
+          post {
+            always {
+              junit 'target/surefire-reports/*.xml'
+              recordCoverage(
+                tools: [[parser: 'JACOCO', pattern: 'target/site/jacoco/jacoco.xml']],
+                sourceCodeRetention: 'EVERY_BUILD'
+              )
+            }
+          }
         }
         stage('Frontend') {
           steps {
@@ -40,8 +48,8 @@ pipeline {
     stage('SonarQube') {
       steps {
         withSonarQubeEnv('sonar') {
-          sh './mvnw -B -DskipTests verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=job-application-tracker'
-        }
+          sh './mvnw -B -DskipTests org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=job-application-tracker'
+        }s
       }
     }
     stage('Quality Gate') {
