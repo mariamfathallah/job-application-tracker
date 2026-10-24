@@ -5,7 +5,7 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
 
 COMPOSE="docker compose -f docker-compose.test.yml -p tracker-it"
-BASE="http://localhost:18080"
+BASE="${IT_BASE_URL:-http://localhost:18080}"
 EMAIL="it-$(date +%s)@example.com"
 PASSWORD='Secur3!Pass'
 
