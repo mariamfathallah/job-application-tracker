@@ -55,26 +55,26 @@ pipeline {
       }
     }
 
-    stage('SonarQube') {
-      steps {
-        withSonarQubeEnv('sonar') {
-          sh './mvnw -B -DskipTests org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=job-application-tracker'
+    stage('Analyse & intégration') {
+      failFast true                     // un échec arrête l'autre branche
+      parallel {
+        stage('SonarQube') {
+          steps {
+            withSonarQubeEnv('sonar') {
+              sh './mvnw -B -DskipTests org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=job-application-tracker'
+            }
+            timeout(time: 5, unit: 'MINUTES') { waitForQualityGate abortPipeline: true }
+          }
         }
-      }
-    }
-    stage('Quality Gate') {
-      steps {
-        timeout(time: 5, unit: 'MINUTES') { waitForQualityGate abortPipeline: true }
-      }
-    }
-
-    stage('Integration tests') {
-      steps {
-        sh 'IT_HOST=host.docker.internal sh ci/scripts/integration-test.sh'
-      }
-      post {
-        always {
-          sh 'docker compose -f docker-compose.test.yml -p tracker-it-${EXECUTOR_NUMBER:-0} down -v || true'
+        stage('Integration tests') {
+          steps {
+            sh 'IT_HOST=host.docker.internal sh ci/scripts/integration-test.sh'
+          }
+          post {
+            always {
+              sh 'docker compose -f docker-compose.test.yml -p tracker-it-${EXECUTOR_NUMBER:-0} down -v || true'
+            }
+          }
         }
       }
     }
@@ -105,7 +105,6 @@ pipeline {
               echo "${TAG#v}-$(git rev-parse --short HEAD)"
             ''').trim()
         }
-        sh './mvnw -B -DskipTests package'
         publishToNexus()
         archiveArtifacts artifacts: 'target/job-application-tracker-*.jar', fingerprint: true
       }
