@@ -29,3 +29,8 @@ output "jwt_secret" {
   value     = random_password.jwt.result
   sensitive = true
 }
+
+output "app_url" {
+  description = "Adresse de l'application dans cet environnement"
+  value       = "http://localhost:${var.app_port}"
+}
