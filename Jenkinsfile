@@ -58,6 +58,18 @@ pipeline {
       }
     }
 
+    stage('Integration tests') {
+      steps {
+        sh './mvnw -B -DskipTests package'
+        sh 'IT_BASE_URL=http://host.docker.internal:18080 sh ci/scripts/integration-test.sh'
+      }
+      post {
+        always {
+          sh 'docker compose -f docker-compose.test.yml -p tracker-it down -v || true'
+        }
+      }
+    }
+
     stage('Package & publish') {
       steps {
         script {
