@@ -1,4 +1,4 @@
-@Library('jenkins-shared-library@v1.0.1') _
+@Library('jenkins-shared-library@v1.2.0') _
 pipeline {
   agent { label 'build' }          // jamais le controller
 
@@ -55,42 +55,57 @@ pipeline {
       }
     }
 
-    stage('SonarQube') {
-      steps {
-        withSonarQubeEnv('sonar') {
-          sh './mvnw -B -DskipTests org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=job-application-tracker'
+    stage('Analyse & intégration') {
+      failFast true                     // un échec arrête l'autre branche
+      parallel {
+        stage('SonarQube') {
+          steps {
+            withSonarQubeEnv('sonar') {
+              sh './mvnw -B -DskipTests org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=job-application-tracker'
+            }
+            timeout(time: 5, unit: 'MINUTES') { waitForQualityGate abortPipeline: true }
+          }
         }
-      }
-    }
-    stage('Quality Gate') {
-      steps {
-        timeout(time: 5, unit: 'MINUTES') { waitForQualityGate abortPipeline: true }
+        stage('Integration tests') {
+          steps {
+            sh 'IT_HOST=host.docker.internal sh ci/scripts/integration-test.sh'
+          }
+          post {
+            always {
+              sh 'docker compose -f docker-compose.test.yml -p tracker-it-${EXECUTOR_NUMBER:-0} down -v || true'
+            }
+          }
+        }
       }
     }
 
-    stage('Integration tests') {
-      steps {
-        sh 'IT_HOST=host.docker.internal sh ci/scripts/integration-test.sh'
-      }
-      post {
-        always {
-          sh 'docker compose -f docker-compose.test.yml -p tracker-it-${EXECUTOR_NUMBER:-0} down -v || true'
+    // Releases automatisées : version calculée depuis les Conventional Commits,
+    // tag Git + GitHub Release + CHANGELOG. Uniquement sur le Jenkins de référence.
+    stage('Release') {
+      when {
+        allOf {
+          expression { env.BRANCH_NAME == env.DEPLOY_BRANCH }
+          environment name: 'RELEASES_ENABLED', value: 'true'
         }
+      }
+      steps {
+        withCredentials([usernamePassword(credentialsId: 'github-token', usernameVariable: 'GH_USER', passwordVariable: 'GITHUB_TOKEN')]) {
+          sh 'npm ci && npx semantic-release'
+        }
+        archiveArtifacts artifacts: 'CHANGELOG.md', allowEmptyArchive: true
       }
     }
 
     stage('Package & publish') {
       steps {
         script {
-          env.VERSION = "0.0.1-${sh(returnStdout: true, script: 'git rev-parse --short HEAD').trim()}"
+            sh 'git fetch --tags --quiet origin || true'
+            env.VERSION = sh(returnStdout: true, script: '''
+              TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo v0.0.0)
+              echo "${TAG#v}-$(git rev-parse --short HEAD)"
+            ''').trim()
         }
-        sh './mvnw -B -DskipTests package'
-        sh '''
-          JAR=$(ls target/*.jar | grep -v '\\.original$' | head -n1)
-          cp "$JAR" "target/job-application-tracker-${VERSION}.jar"
-          curl -fsS -u "$NEXUS_CREDS_USR:$NEXUS_CREDS_PSW" --upload-file "target/job-application-tracker-${VERSION}.jar" \
-            "$NEXUS_URL/repository/artifacts/job-application-tracker/${VERSION}/job-application-tracker-${VERSION}.jar"
-        '''
+        publishToNexus()
         archiveArtifacts artifacts: 'target/job-application-tracker-*.jar', fingerprint: true
       }
     }
@@ -118,7 +133,7 @@ pipeline {
       when { expression { env.BRANCH_NAME == env.DEPLOY_BRANCH } }
       steps {
         sh 'sh ci/scripts/infra.sh apply staging'
-        sh 'NEXUS_URL=$NEXUS_URL NEXUS_USER=$NEXUS_CREDS_USR NEXUS_PASSWORD=$NEXUS_CREDS_PSW sh ci/scripts/deploy.sh staging "$VERSION"'
+        deployTo('staging')
       }
     }
 
@@ -129,7 +144,7 @@ pipeline {
           input message: "Déployer ${env.VERSION} en production ? (plan d'infra : artefact plan-production.txt)", submitter: 'admin'
         }
         sh 'sh ci/scripts/infra.sh apply production'   // applique exactement le plan validé
-        sh 'NEXUS_URL=$NEXUS_URL NEXUS_USER=$NEXUS_CREDS_USR NEXUS_PASSWORD=$NEXUS_CREDS_PSW sh ci/scripts/deploy.sh production "$VERSION"'
+        deployTo('production')
       }
     }
   }

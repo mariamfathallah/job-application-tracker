@@ -11,18 +11,19 @@ Exigence du sujet (quadrinôme) : partie commune + **5 modules**, dont les **2 d
 |---|---|
 | Stack Docker `ci/` (Jenkins, agent, SonarQube, Nexus) | Fait |
 | `Jenkinsfile` : tests, Sonar + Quality Gate, artefact Nexus, staging auto, prod après validation | Fait et vérifié de bout en bout |
-| Tests d'intégration Docker Compose | À faire |
-| Shared Library versionnée par tag | À faire |
-| Webhook GitHub + statut du build sur les PR | À faire (besoin d'un dépôt dont on est admin) |
+| Tests d'intégration Docker Compose | Fait (PR #3) |
+| Shared Library versionnée par tag | Fait (PR #4, `notifyDiscord` ; étapes communes à migrer) |
+| Webhook GitHub + statut du build sur les PR | Fait (source GitHub, smee, check obligatoire sur les PR) |
 | 5 modules, rapport technique, soutenance | À faire |
 
 ## 2. Architecture en bref
 
 ```
-git push ─► Jenkins (controller, 0 executor) ─► agent-1 (JDK 21, Node 22, Docker)
-   lint + tests (parallèle) ─► SonarQube (Quality Gate bloquante)
-   ─► jar versionné 0.0.1-<hash> ─► Nexus (dépôt raw "artifacts")
+git push ─► webhook (smee) ─► Jenkins (controller, 0 executor) ─► agent-1 (JDK 21, Node 22, Docker)
+   commit lint (PR) ─► lint + tests (parallèle) ─► SonarQube (Quality Gate bloquante) ─► tests d'intégration
+   ─► release (semantic-release : tag vX.Y.Z) ─► jar X.Y.Z-<hash> ─► Nexus (dépôt raw "artifacts")
    ─► staging (auto, :8082) ─► validation manuelle (input, submitter admin) ─► production (:8083)
+       (chaque environnement : proxy nginx + blue/green)
 ```
 
 | Service | URL locale | Rôle |
@@ -30,13 +31,14 @@ git push ─► Jenkins (controller, 0 executor) ─► agent-1 (JDK 21, Node 22
 | Jenkins | http://localhost:8090 | orchestration |
 | SonarQube | http://localhost:9000 | qualité de code |
 | Nexus | http://localhost:8081 | stockage des artefacts |
-| Staging / Production | :8082 / :8083 | appli déployée (+ PostgreSQL par environnement) |
+| Staging / Production | :8082 / :8083 | proxy nginx devant l'appli blue/green (+ PostgreSQL par environnement) |
 
 Fichiers clés :
 - `Jenkinsfile` : le pipeline. Variable `DEPLOY_BRANCH` = branche qui déploie.
 - `ci/docker-compose.yml`, `ci/jenkins/casc.yaml` (config Jenkins as Code), `ci/jenkins/plugins.txt`
 - `ci/scripts/deploy.sh` (déploie une version via Ansible), `infra.sh` (OpenTofu), `bootstrap-nexus.sh`, `bootstrap-sonar.sh`
-- `infra/terraform` (environnements décrits avec OpenTofu), `infra/ansible` (déploiement de l'appli) — voir `infra/README.md`
+- `infra/terraform` (environnements décrits avec OpenTofu), `infra/ansible` (déploiement : `bluegreen.yml`, `simple.yml`) — voir `infra/README.md`
+- `package.json`, `commitlint.config.cjs`, `.releaserc.json` : outils de release (commitlint, semantic-release)
 
 ---
 
@@ -57,7 +59,10 @@ Puis, **dans cet ordre** :
 1. **Nexus** (http://localhost:8081) : mot de passe initial = `docker exec ci-nexus sh -c "cat /nexus-data/admin.password"`. Se connecter (`admin`), **accepter la licence (EULA)** dans l'assistant, changer le mot de passe, le mettre dans `ci/.env` (`NEXUS_PASSWORD`). Puis : `NEXUS_PASSWORD=<mdp> sh scripts/bootstrap-nexus.sh`
 2. **SonarQube** (http://localhost:9000, `admin`/`admin`) : changer le mot de passe (le noter dans `ci/.env` : `SONAR_ADMIN_PASSWORD=`), générer un token (My Account → Security) → `SONAR_TOKEN` dans `ci/.env`. Puis : `SONAR_ADMIN_PASSWORD=<mdp> sh scripts/bootstrap-sonar.sh` (webhook vers Jenkins, indispensable à la Quality Gate).
 3. `docker compose up -d` (Jenkins relit les secrets).
-4. Jenkins → job `job-application-tracker` → **Scan Repository Now**. Le build de `feature/ci-jenkins` doit passer.
+4. **GitHub** : créer un token *fine-grained* (**Public repositories (read-only)** suffit) → `GITHUB_USER` et `GITHUB_TOKEN` dans `ci/.env`. Sans token, le scan du dépôt échoue.
+      Jenkins de référence uniquement (Mariam) : token limité au dépôt avec *Contents*, *Commit statuses* et *Pull requests* en lecture/écriture, `SMEE_URL` (channel https://smee.io relié au webhook du dépôt) et `RELEASES_ENABLED=true`.
+5. `docker compose up -d --build jenkins`
+6. Jenkins → job `job-application-tracker` → **Scan Repository Now**. Le build de `feature/ci-jenkins` doit passer.
 
 Les secrets restent dans `ci/.env` (ignoré par Git). **Ne jamais** les committer ni les coller dans un chat ou une PR ; s'échanger en message privé.
 
@@ -84,14 +89,16 @@ git push -u origin module/<nom>
 1. Jenkins construit la branche (tests + Sonar, **sans déployer**).
 2. Ouvrir une **Pull Request** vers `feature/ci-jenkins`.
 3. **Un autre membre** la relit (voir §7) ; build vert obligatoire.
-4. Fusion (squash ou merge), suppression de la branche, puis tout le monde fait `git pull`.
+4. **L'auteur** fusionne en **Squash and merge** (seule option activée), supprime la branche, puis tout le monde fait `git pull`. Ne plus pousser sur une branche déjà fusionnée : repartir d'une nouvelle branche.
 
 ### Règles
 - **PR petites et fréquentes** (le `Jenkinsfile` et `deploy.sh` sont modifiés par plusieurs modules : les gros écarts créent des conflits).
-- **Conventional Commits** : `feat(ci): ...`, `fix(deploy): ...`, `docs: ...`, `chore: ...`. Le module *Releases automatisées* calcule la version à partir de ces messages.
+- **Conventional Commits** : `feat(ci): ...`, `fix(deploy): ...`, `docs: ...`, `chore: ...`. **Vérifié sur chaque PR** (étape `Commit lint`) ; le **titre de la PR** devient le message du commit après le squash, il doit donc aussi respecter le format. semantic-release calcule la version à partir de ces messages (`feat` → mineure, `fix` → correctif).
 - Ne jamais pousser directement sur `feature/ci-jenkins` ni forcer (`--force`).
 - Avant de modifier le `Jenkinsfile`, vérifier qu'il reste valide : l'ouvrir dans Jenkins (Replay) ou lancer un build sur sa branche.
 - Les fichiers `*.sh` et `ci/**` doivent rester en **LF** (déjà imposé par `.gitattributes`).
+- Une PR qui modifie `ci/jenkins/*` (`casc.yaml`, `plugins.txt`) ne peut passer que si le Jenkins de référence est reconstruit avec ces changements. Mieux : deux PR (d'abord la configuration, puis son utilisation dans le `Jenkinsfile`).
+- `main` est protégée : ne jamais ouvrir de PR vers `main` (c'est le site en ligne).
 
 ---
 
@@ -130,10 +137,10 @@ Module Qualité et retour rapide (niveau 1) :
 - [x] Staging et prod décrits en **OpenTofu** (réseau, volume, PostgreSQL, secrets) — `infra/terraform`
 - [x] Configuration par **Ansible** (déploiement de l'appli, healthcheck) — `infra/ansible`
 - [x] Plan calculé à chaque build et archivé ; étape de publication sur la PR prête
-- [ ] Plan **effectivement publié sur une PR** : nécessite la source GitHub + token (rôle D)
+- [x] Plan **effectivement publié sur une PR** : nécessite la source GitHub + token (rôle D)
 - [x] `apply` exécuté par le pipeline **après validation** (fusion pour staging, `input` pour la prod), sur le plan enregistré
 - [x] État et secrets hors du dépôt (volume `tf_state` de l'agent, `.gitignore`)
-- [x] Interface avec D : `ci/scripts/deploy.sh <env> <version>` inchangé ; le blue/green se fait dans `infra/ansible/deploy.yml`
+- [x] Interface avec D : `ci/scripts/deploy.sh <env> <version>` inchangé ; le blue/green se fait dans `infra/ansible/bluegreen.yml`
 
 ### C — Observabilité et DORA (niveau 3)
 - [ ] Prometheus + Grafana ajoutés à la stack (`ci/docker-compose.yml`)
@@ -146,20 +153,20 @@ Module Qualité et retour rapide (niveau 1) :
 
 ### D — Dépôt/webhook/PR, Releases, Blue/green
 Partie commune :
-- [ ] Obtenir le rôle **admin** sur le dépôt (ou créer un dépôt d'équipe) ; inviter A, B, C
-- [ ] Token GitHub **fine-grained** limité au dépôt (Contents R, Commit statuses R/W, Pull requests R) dans `ci/.env`
-- [ ] Repasser la source du job de « Git » à « GitHub » dans `ci/jenkins/casc.yaml` (PR + statuts)
-- [ ] **Webhook** GitHub → `<URL publique>/github-webhook/` (ngrok/Tailscale)
+- [x] Rôle admin sur le dépôt ; A, B, C invités ; `feature/ci-jenkins` et `main` protégées (PR + 1 approbation + check Jenkins)
+- [x] Token GitHub **fine-grained** dans `ci/.env` (référence : lecture/écriture ; autres membres : lecture seule)
+- [x] Source du job « GitHub » dans `ci/jenkins/casc.yaml` : builds `PR-<n>`, statut `continuous-integration/jenkins/pr-merge` sur les PR
+- [x] **Webhook** GitHub → smee.io → conteneur `ci-smee` → Jenkins (`smee-client@2.0.4` : la v5 supprime le `/` final, Jenkins répond 405) ; scan horaire en secours
 
 Module Releases automatisées (niveau 1) :
-- [ ] Conventional Commits imposés (hook ou vérification en CI)
-- [ ] semantic-release ou release-please : calcul de version, changelog, **tag Git**
-- [ ] Artefact versionné par la release, **notes de version** publiées
+- [x] Conventional Commits imposés en CI (`commitlint`, étape `Commit lint` sur les PR)
+- [x] semantic-release : calcul de version, `CHANGELOG.md`, **tag Git** `vX.Y.Z` (branche `feature/ci-jenkins`, `main` étant le site en ligne)
+- [x] Artefact versionné `X.Y.Z-<hash>`, **notes de version** publiées en GitHub Release ; publication uniquement sur le Jenkins de référence (`RELEASES_ENABLED`)
 
 Module Blue/green (niveau 2) :
-- [ ] Deux instances (blue/green) derrière un **reverse proxy** (nginx/Traefik) en prod
-- [ ] Bascule après **vérification de santé automatique**
-- [ ] **Retour arrière automatique** en cas d'échec
+- [x] Deux instances (blue/green) derrière un **reverse proxy** nginx, en staging et en production
+- [x] Bascule après **vérification de santé automatique**, sans interruption (`nginx -s reload`)
+- [x] **Retour arrière automatique** en cas d'échec ; redéployer la même version ne change rien (idempotence)
 
 ### Tous
 - [ ] Rapport technique (§9) — chacun rédige ses sections
@@ -179,7 +186,7 @@ Module Blue/green (niveau 2) :
 | 4 | Rapport, README, relectures croisées, répétitions | prévoir une marge avant la soutenance |
 
 ### Interface B ↔ D (à fixer ensemble)
-`ci/scripts/deploy.sh <env> <version>` est le point de contact (fait par B) : OpenTofu fournit réseau, base et secrets via ses outputs, Ansible (`infra/ansible/deploy.yml`) installe l'appli. Pour le blue/green, D modifie le playbook (deux conteneurs + reverse proxy) et, si besoin, ajoute des ressources dans `infra/terraform/main.tf` (ex. le proxy) en accord avec B.
+Fait : `ci/scripts/deploy.sh <env> <version>` reste le point de contact. OpenTofu (B) fournit réseau, base et secrets ; Ansible gère l'appli, les deux couleurs et le proxy nginx (D, `infra/ansible/bluegreen.yml`). OpenTofu n'a pas été modifié : nginx refuse de démarrer si sa cible n'existe pas encore, l'ordre appli → proxy est donc géré dans le playbook.
 
 ---
 
@@ -240,11 +247,17 @@ Checklist de relecture d'une PR :
 | Scripts qui échouent dans les conteneurs (`\r`) | Fins de ligne CRLF : garder LF (`.gitattributes`) |
 | Build abandonné « Timeout has been exceeded » | Timeout global 60 min, `input` de prod : 30 min |
 | `docker exec ... /nexus-data/...` : chemin Git Bash modifié | Utiliser `docker exec ci-nexus sh -c "cat /nexus-data/admin.password"` |
-| App qui ne démarre pas en déploiement | `docker logs tracker-staging` (profil `prod`, base PostgreSQL du même environnement) |
+| App qui ne démarre pas en déploiement | `docker logs tracker-staging-blue` (ou `-green`) ; couleur active : `docker exec tracker-staging-proxy cat /etc/nginx/active_color` |
+| Webhook reçu mais `POST /github-webhook - 405` dans `docker logs ci-smee` | URL sans `/` final : garder `smee-client@2.0.4` |
+| `npm ci` : « package.json and package-lock.json are not in sync » | Régénérer le lock avec le npm de l'agent (`npm install --package-lock-only` dans `ci-agent`) |
+| semantic-release `ENOGHTOKEN` en local | `GITHUB_TOKEN` vide : `export GITHUB_TOKEN=$(grep '^GITHUB_TOKEN=' ci/.env \| cut -d= -f2- \| tr -d '\r')` |
+| `docker` répond `500 Internal Server Error`, ou les `localhost:*` ne répondent plus | Docker Desktop bloqué (souvent mémoire) : *Quit Docker Desktop*, `wsl --shutdown`, relancer |
+| Workspace de l'agent vide après un redémarrage | Normal (dossier non persistant) : Jenkins reclone au prochain build ; pour un test manuel, cloner la branche dans `/tmp` |
+| Build `ABORTED` après « Deploy staging » | Personne n'a validé la production dans les 30 min : cliquer **Proceed** sur le build |
 
 Commandes utiles :
 ```bash
 docker compose -f ci/docker-compose.yml ps          # état de la stack
 docker compose -f ci/docker-compose.yml logs -f jenkins
-docker logs tracker-staging                          # logs de l'appli déployée
+docker logs tracker-staging-blue                     # logs de l'appli déployée (ou -green)
 ```
