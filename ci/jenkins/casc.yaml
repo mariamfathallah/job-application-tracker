@@ -1,6 +1,11 @@
 jenkins:
   systemMessage: "Jenkins CI/CD - configuré par JCasC (ci/jenkins/casc.yaml)"
   numExecutors: 0            # le controller ne build jamais
+  globalNodeProperties:
+    - envVars:
+        env:
+          - key: "RELEASES_ENABLED"
+            value: "${RELEASES_ENABLED:-false}"
   securityRealm:
     local:
       allowsSignup: false

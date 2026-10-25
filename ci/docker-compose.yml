@@ -17,6 +17,7 @@ services:
       DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL:-}
       NEXUS_USER: ${NEXUS_USER:-admin}
       NEXUS_PASSWORD: ${NEXUS_PASSWORD:-}
+      RELEASES_ENABLED: ${RELEASES_ENABLED:-false}
     volumes:
       - jenkins_home:/var/jenkins_home
     depends_on: [sonarqube, nexus]
