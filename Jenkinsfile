@@ -105,9 +105,9 @@ pipeline {
               echo "${TAG#v}-$(git rev-parse --short HEAD)"
             ''').trim()
         }
-                sh 'rm -f target/job-application-tracker-*.jar'   // copies left by previous builds (the workspace is kept)
-                publishToNexus()
-                archiveArtifacts artifacts: "target/job-application-tracker-${env.VERSION}.jar", fingerprint: true
+        sh 'rm -f target/job-application-tracker-*.jar'   // copies left by previous builds (the workspace is kept)
+        publishToNexus()
+        archiveArtifacts artifacts: "target/job-application-tracker-${env.VERSION}.jar", fingerprint: true
       }
     }
 
