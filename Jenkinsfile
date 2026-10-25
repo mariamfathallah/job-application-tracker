@@ -1,3 +1,4 @@
+@Library('jenkins-shared-library@v1.0.1') _
 pipeline {
   agent { label 'build' }          // jamais le controller
 
@@ -58,6 +59,17 @@ pipeline {
       }
     }
 
+    stage('Integration tests') {
+      steps {
+        sh 'IT_HOST=host.docker.internal sh ci/scripts/integration-test.sh'
+      }
+      post {
+        always {
+          sh 'docker compose -f docker-compose.test.yml -p tracker-it-${EXECUTOR_NUMBER:-0} down -v || true'
+        }
+      }
+    }
+
     stage('Package & publish') {
       steps {
         script {
@@ -114,15 +126,7 @@ pipeline {
   }
   post {
     always {
-      withCredentials([string(credentialsId: 'discord-webhook', variable: 'DISCORD_URL')]) {
-        script {
-          def status = currentBuild.currentResult
-          def icon = status == 'SUCCESS' ? '✅' : (status == 'UNSTABLE' ? '⚠️' : '❌')
-          def msg = "${icon} ${env.JOB_NAME} #${env.BUILD_NUMBER} : ${status} (${currentBuild.durationString}) ${env.BUILD_URL}"
-          writeFile file: 'discord.json', text: groovy.json.JsonOutput.toJson([content: msg])
-          sh 'curl -sS -H "Content-Type: application/json" -d @discord.json "$DISCORD_URL" || true'
-        }
-      }
+      notifyDiscord()
     }
   }
 }
