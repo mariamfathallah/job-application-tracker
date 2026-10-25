@@ -1,3 +1,4 @@
+@Library('jenkins-shared-library@v1.0.0') _
 pipeline {
   agent { label 'build' }          // jamais le controller
 
@@ -114,15 +115,7 @@ pipeline {
   }
   post {
     always {
-      withCredentials([string(credentialsId: 'discord-webhook', variable: 'DISCORD_URL')]) {
-        script {
-          def status = currentBuild.currentResult
-          def icon = status == 'SUCCESS' ? '✅' : (status == 'UNSTABLE' ? '⚠️' : '❌')
-          def msg = "${icon} ${env.JOB_NAME} #${env.BUILD_NUMBER} : ${status} (${currentBuild.durationString}) ${env.BUILD_URL}"
-          writeFile file: 'discord.json', text: groovy.json.JsonOutput.toJson([content: msg])
-          sh 'curl -sS -H "Content-Type: application/json" -d @discord.json "$DISCORD_URL" || true'
-        }
-      }
+      notify()
     }
   }
 }
