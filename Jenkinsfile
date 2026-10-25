@@ -1,4 +1,4 @@
-@Library('jenkins-shared-library@v1.1.0') _
+@Library('jenkins-shared-library@v1.2.0') _
 pipeline {
   agent { label 'build' }          // jamais le controller
 
@@ -133,7 +133,7 @@ pipeline {
       when { expression { env.BRANCH_NAME == env.DEPLOY_BRANCH } }
       steps {
         sh 'sh ci/scripts/infra.sh apply staging'
-        sh 'NEXUS_URL=$NEXUS_URL NEXUS_USER=$NEXUS_CREDS_USR NEXUS_PASSWORD=$NEXUS_CREDS_PSW sh ci/scripts/deploy.sh staging "$VERSION"'
+        deployTo('staging')
       }
     }
 
@@ -144,7 +144,7 @@ pipeline {
           input message: "Déployer ${env.VERSION} en production ? (plan d'infra : artefact plan-production.txt)", submitter: 'admin'
         }
         sh 'sh ci/scripts/infra.sh apply production'   // applique exactement le plan validé
-        sh 'NEXUS_URL=$NEXUS_URL NEXUS_USER=$NEXUS_CREDS_USR NEXUS_PASSWORD=$NEXUS_CREDS_PSW sh ci/scripts/deploy.sh production "$VERSION"'
+        deployTo('production')
       }
     }
   }
