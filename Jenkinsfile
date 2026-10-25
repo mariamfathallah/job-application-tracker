@@ -58,6 +58,17 @@ pipeline {
       }
     }
 
+    stage('Integration tests') {
+      steps {
+        sh 'IT_HOST=host.docker.internal sh ci/scripts/integration-test.sh'
+      }
+      post {
+        always {
+          sh 'docker compose -f docker-compose.test.yml -p tracker-it-${EXECUTOR_NUMBER:-0} down -v || true'
+        }
+      }
+    }
+
     stage('Package & publish') {
       steps {
         script {
