@@ -24,6 +24,7 @@
           SPRING_DATASOURCE_USERNAME: jobtracker
           SPRING_DATASOURCE_PASSWORD: "{{ db_password }}"
           JWT_SECRET: "{{ jwt_secret }}"
+          JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=75 -Xmx384m"
       no_log: true
 
     - name: Vérifier la santé de l'application
