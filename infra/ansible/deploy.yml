@@ -13,7 +13,7 @@
     build_dir: "/tmp/build-{{ app_name }}"
     image: "{{ app_name }}"
     health_url: "http://host.docker.internal:{{ app_port }}/actuator/health"
-    strategy: "{{ deploy_strategy | default('bluegreen', true) }}"
+    rollout: "{{ deploy_strategy | default('bluegreen', true) }}"
 
   tasks:
     - name: Préparer le dossier de construction de l'image
@@ -51,8 +51,8 @@
           path: "{{ build_dir }}"
         force_source: false
 
-    - name: Déployer selon la stratégie « {{ strategy }} »
-      ansible.builtin.include_tasks: "{{ strategy }}.yml"
+    - name: Déployer selon la stratégie « {{ rollout }} »
+      ansible.builtin.include_tasks: "{{ rollout }}.yml"
 
     - name: Résumé
       ansible.builtin.debug:
