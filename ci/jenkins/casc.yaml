@@ -30,7 +30,7 @@ unclassified:
   globalLibraries:
     libraries:
       - name: "jenkins-shared-library"
-        defaultVersion: "v1.0.0"
+        defaultVersion: "v1.0.1"
         implicit: false
         allowVersionOverride: true
         retriever:

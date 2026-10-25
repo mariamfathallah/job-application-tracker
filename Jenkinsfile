@@ -1,4 +1,4 @@
-@Library('jenkins-shared-library@v1.0.0') _
+@Library('jenkins-shared-library@v1.0.1') _
 pipeline {
   agent { label 'build' }          // jamais le controller
 
@@ -115,7 +115,7 @@ pipeline {
   }
   post {
     always {
-      notify()
+      notifyDiscord()
     }
   }
 }
