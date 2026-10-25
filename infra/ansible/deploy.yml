@@ -10,7 +10,10 @@
   vars:
     nexus_url: "{{ lookup('env', 'NEXUS_URL') | default('http://nexus:8081', true) }}"
     artifact_url: "{{ nexus_url }}/repository/artifacts/job-application-tracker/{{ app_version }}/job-application-tracker-{{ app_version }}.jar"
-    build_dir: "/tmp/build-{{ app_name }}"
+    # Un dossier par version : get_url ne retélécharge pas un fichier déjà présent,
+    # un dossier partagé entre versions ferait construire l'image avec un ancien jar.
+    build_root: "/tmp/build-{{ app_name }}"
+    build_dir: "{{ build_root }}/{{ app_version }}"
     image: "{{ app_name }}"
     health_url: "http://host.docker.internal:{{ app_port }}/actuator/health"
     rollout: "{{ deploy_strategy | default('bluegreen', true) }}"
@@ -30,6 +33,7 @@
         url_password: "{{ lookup('env', 'NEXUS_PASSWORD') }}"
         force_basic_auth: true
         mode: "0644"
+      register: artifact
       no_log: true
 
     - name: Écrire le Dockerfile d'exécution
@@ -49,7 +53,23 @@
         source: build
         build:
           path: "{{ build_dir }}"
-        force_source: false
+        # jar fraîchement téléchargé : on reconstruit (une image du même tag a pu être faite avec un autre jar)
+        force_source: "{{ artifact is changed }}"
+
+    - name: Lister les fichiers de construction des autres versions
+      ansible.builtin.find:
+        paths: "{{ build_root }}"
+        file_type: any
+        excludes: "{{ app_version }}"
+      register: old_builds
+
+    - name: Supprimer les fichiers des autres versions (l'image est construite)
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: absent
+      loop: "{{ old_builds.files }}"
+      loop_control:
+        label: "{{ item.path | basename }}"
 
     - name: Déployer selon la stratégie « {{ rollout }} »
       ansible.builtin.include_tasks: "{{ rollout }}.yml"

@@ -71,6 +71,7 @@ Deploy production   validation manuelle (input) → tofu apply production → An
 
 - Relancer `infra.sh plan` sans changement : `No changes. Your infrastructure matches the configuration.`
 - Relancer `deploy.sh` avec la même version : `changed=0` côté Ansible, rien n'est recréé.
+- Chaque version est téléchargée dans son propre dossier (`/tmp/build-tracker-<env>/<version>`) : l'image contient toujours le jar de la version annoncée (vérifiable avec `docker exec tracker-<env>-<couleur> sha1sum /app.jar`). Les dossiers des versions précédentes sont supprimés.
 
 ## Commandes utiles (depuis l'agent)
 
