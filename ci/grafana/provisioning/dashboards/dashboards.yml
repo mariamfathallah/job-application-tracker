@@ -1,0 +1,9 @@
+# Charge les tableaux de bord versionnés dans ci/grafana/dashboards.
+apiVersion: 1
+providers:
+  - name: job-application-tracker
+    folder: CI/CD
+    type: file
+    disableDeletion: true
+    options:
+      path: /etc/grafana/dashboards
