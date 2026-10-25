@@ -35,6 +35,10 @@ credentials:
               scope: GLOBAL
               id: "sonar-token"
               secret: "${SONAR_TOKEN:-}"
+          - string:
+              scope: GLOBAL
+              id: "discord-webhook"
+              secret: "${DISCORD_WEBHOOK_URL:-}"
           - usernamePassword:
               scope: GLOBAL
               id: "github-token"
