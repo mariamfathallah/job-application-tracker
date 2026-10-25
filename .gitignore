@@ -53,6 +53,7 @@ Thumbs.db
 ############################
 .env
 .env.*
+!ci/.env.example
 application-local.yml
 
 ############################
