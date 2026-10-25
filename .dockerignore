@@ -1,2 +1,8 @@
-*
+# Fichiers inutiles pour construire les images Docker
+.git
+**/node_modules
+frontend
+infra
+docs
+target/*
 !target/app-under-test.jar
