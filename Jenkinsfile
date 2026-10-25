@@ -79,10 +79,31 @@ pipeline {
       }
     }
 
+    // Releases automatisées : version calculée depuis les Conventional Commits,
+    // tag Git + GitHub Release + CHANGELOG. Uniquement sur le Jenkins de référence.
+    stage('Release') {
+      when {
+        allOf {
+          expression { env.BRANCH_NAME == env.DEPLOY_BRANCH }
+          environment name: 'RELEASES_ENABLED', value: 'true'
+        }
+      }
+      steps {
+        withCredentials([usernamePassword(credentialsId: 'github-token', usernameVariable: 'GH_USER', passwordVariable: 'GITHUB_TOKEN')]) {
+          sh 'npm ci && npx semantic-release'
+        }
+        archiveArtifacts artifacts: 'CHANGELOG.md', allowEmptyArchive: true
+      }
+    }
+
     stage('Package & publish') {
       steps {
         script {
-          env.VERSION = "0.0.1-${sh(returnStdout: true, script: 'git rev-parse --short HEAD').trim()}"
+            sh 'git fetch --tags --quiet origin || true'
+            env.VERSION = sh(returnStdout: true, script: '''
+              TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo v0.0.0)
+              echo "${TAG#v}-$(git rev-parse --short HEAD)"
+            ''').trim()
         }
         sh './mvnw -B -DskipTests package'
         sh '''
