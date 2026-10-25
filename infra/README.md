@@ -5,10 +5,10 @@ Le plan est calculé à chaque build, publié sur la pull request, et appliqué 
 
 ## Qui fait quoi
 
-| Outil | Gère | Pourquoi lui |
-|---|---|---|
-| **OpenTofu** (`infra/terraform`) | réseau Docker isolé, volume de données, base PostgreSQL, secrets (mot de passe BDD, clé JWT) | infrastructure durable, qui change rarement : on décrit l'état voulu, OpenTofu calcule l'écart (plan) |
-| **Ansible** (`infra/ansible`) | l'application : téléchargement de l'artefact Nexus, image, conteneur, variables, vérification de santé | change à chaque livraison (nouvelle version) : c'est de la configuration, pas de l'infrastructure |
+| Outil | Gère                                                                                                                                                             | Pourquoi lui |
+|---|------------------------------------------------------------------------------------------------------------------------------------------------------------------|---|
+| **OpenTofu** (`infra/terraform`) | réseau Docker isolé, volume de données, base PostgreSQL, secrets (mot de passe BDD, clé JWT)                                                                     | infrastructure durable, qui change rarement : on décrit l'état voulu, OpenTofu calcule l'écart (plan) |
+| **Ansible** (`infra/ansible`) | l'application : téléchargement de l'artefact Nexus, image, conteneurs blue/green, proxy nginx, bascule et vérification de santé | change à chaque livraison (nouvelle version) : c'est de la configuration, pas de l'infrastructure |
 
 Les deux environnements ont **le même code** ; seules les valeurs changent (`environments/staging.tfvars`, `environments/production.tfvars`).
 
@@ -18,11 +18,27 @@ Les deux environnements ont **le même code** ; seules les valeurs changent (`en
 tracker-<env>-net        réseau Docker isolé                (OpenTofu)
 tracker-<env>-db-data    volume des données PostgreSQL      (OpenTofu, protégé contre la destruction)
 tracker-<env>-db         conteneur PostgreSQL 16 + healthcheck (OpenTofu)
-tracker-<env>            conteneur de l'application         (Ansible)  → :8082 staging, :8083 production
+tracker-<env>-proxy      proxy nginx, seul port publié      (Ansible)  → :8082 staging, :8083 production
+tracker-<env>-blue       une version de l'application       (Ansible, sans port publié)
+tracker-<env>-green      l'autre version                    (Ansible, sans port publié)
 ```
 
 Chaque ressource porte les labels `project`, `environment` et `managed-by` (`opentofu` ou `ansible`) :
 `docker ps --format '{{.Names}} {{.Labels}}'` montre qui gère quoi.
+
+## Déploiement blue/green (Ansible)
+
+Chaque environnement a deux conteneurs applicatifs (`blue`, `green`) derrière un proxy nginx (voir ci-dessus) :
+
+1. La nouvelle version est déployée sur la couleur **inactive** (le trafic n'est pas touché).
+2. Vérification de santé directement sur cette couleur.
+3. OK : le proxy bascule (`nginx -s reload`, sans interruption), puis vérification à travers le proxy.
+4. KO : la couleur défaillante est supprimée, le proxy reste (ou revient) sur l'ancienne : retour arrière automatique.
+5. L'ancienne couleur reste démarrée pour un retour arrière instantané.
+
+Redéployer la version déjà active ne change rien (idempotence).
+Stratégie choisie par `DEPLOY_STRATEGY` (`bluegreen` par défaut, `simple` = un seul conteneur).
+Couleur active : `docker exec tracker-<env>-proxy cat /etc/nginx/active_color`
 
 ## Dans le pipeline
 
@@ -64,16 +80,19 @@ cd /opt/jenkins-agent/workspace/<dossier du build>
 sh ci/scripts/infra.sh plan staging        # voir l'écart entre le code et l'existant
 sh ci/scripts/infra.sh output staging      # outputs (contient des secrets)
 ls /tfstate                                # fichiers d'état
+# si le workspace est vide (redémarrage de Docker) : cloner la branche dans /tmp
+git clone --branch <branche> --depth 1 https://github.com/mariamfathallah/job-application-tracker.git /tmp/bg && cd /tmp/bg
 ```
 
 ## Exemples de modifications (pour la soutenance)
 
 - **Changer le port de staging** : `app_port` dans `environments/staging.tfvars` → le plan montre le nouvel output, Ansible republie le port.
 - **Changer la version de PostgreSQL** : `postgres_image` → le plan montre le remplacement du conteneur de base (les données restent dans le volume).
-- **Ajouter une variable d'environnement à l'application** : bloc `env` de la tâche « Conteneur » dans `infra/ansible/deploy.yml`.
+- **Ajouter une variable d'environnement à l'application** : bloc `env` de la tâche « Conteneur » dans `infra/ansible/bluegreen.yml` (et `simple.yml` pour la stratégie simple).
 - **Montrer la protection des données** : supprimer la ressource `docker_volume.db_data` du code → le plan échoue grâce à `prevent_destroy`.
 
 ## Limites connues
 
 - Les environnements sont des conteneurs sur la machine Docker de l'agent (pas des VM) : c'est le provider `kreuzwerker/docker`. Passer à des VM cloud reviendrait à changer de provider dans `main.tf`, la structure restant la même.
 - L'état est local au volume de l'agent : chaque membre de l'équipe a ses propres environnements (cohérent avec une stack par personne).
+- Blue/green : l'ancienne couleur reste démarrée pour un retour arrière instantané, ce qui coûte un conteneur Java de plus (~400 Mo) par environnement.

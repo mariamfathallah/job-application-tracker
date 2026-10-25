@@ -1,0 +1,175 @@
+# Stratégie blue/green : deux conteneurs (blue, green) derrière un proxy nginx.
+# La nouvelle version est déployée sur la couleur inactive, vérifiée, puis le proxy bascule.
+# En cas d'échec, le proxy reste (ou revient) sur l'ancienne couleur : retour arrière automatique.
+# Inclus par deploy.yml quand strategy = bluegreen.
+
+- name: Noms et images utilisés
+  ansible.builtin.set_fact:
+    proxy_name: "{{ app_name }}-proxy"
+    proxy_image: "nginx:1.27-alpine"
+    probe_image: "curlimages/curl:8.10.1"
+
+# --- 1. Quelle couleur est active ? -------------------------------------------
+- name: Lire la couleur active mémorisée dans le proxy
+  ansible.builtin.command: docker exec {{ proxy_name }} cat /etc/nginx/active_color
+  register: active_read
+  changed_when: false
+  failed_when: false
+
+- name: Déterminer la couleur active et la couleur cible
+  ansible.builtin.set_fact:
+    active_color: "{{ (active_read.stdout | trim) if active_read.rc == 0 else '' }}"
+    target_color: "{{ 'green' if (active_read.stdout | trim) == 'blue' else 'blue' }}"
+
+- name: Inspecter le conteneur actif
+  community.docker.docker_container_info:
+    name: "{{ app_name }}-{{ active_color }}"
+  register: active_info
+  when: active_color | length > 0
+
+# --- 2. Idempotence : rien à faire si la version est déjà en ligne -------------
+- name: Version déjà active
+  when:
+    - active_color | length > 0
+    - active_info.exists
+    - active_info.container.State.Running
+    - active_info.container.Config.Labels.version == app_version
+  block:
+    - name: Aucun changement
+      ansible.builtin.debug:
+        msg: "{{ env_name }} : {{ app_version }} est déjà active sur {{ active_color }}, rien à faire"
+
+    - name: Fin du déploiement
+      ansible.builtin.meta: end_host
+
+# --- 3. Déployer sur la couleur inactive et la vérifier, sans toucher au trafic --
+- name: Déployer {{ app_version }} sur la couleur {{ target_color }}
+  block:
+    - name: Conteneur {{ app_name }}-{{ target_color }}
+      community.docker.docker_container:
+        name: "{{ app_name }}-{{ target_color }}"
+        image: "{{ image }}:{{ app_version }}"
+        state: started
+        recreate: true
+        restart_policy: unless-stopped
+        network_mode: "{{ network_name }}"
+        networks:
+          - name: "{{ network_name }}"
+        labels:
+          project: job-application-tracker
+          environment: "{{ env_name }}"
+          version: "{{ app_version }}"
+          color: "{{ target_color }}"
+          managed-by: ansible
+        env:
+          SPRING_PROFILES_ACTIVE: prod
+          SPRING_DATASOURCE_URL: "jdbc:postgresql://{{ db_host }}:5432/jobtracker"
+          SPRING_DATASOURCE_USERNAME: jobtracker
+          SPRING_DATASOURCE_PASSWORD: "{{ db_password }}"
+          JWT_SECRET: "{{ jwt_secret }}"
+      no_log: true
+
+    - name: Vérifier la santé de {{ target_color }} (directement, avant toute bascule)
+      ansible.builtin.command: >-
+        docker run --rm --network {{ network_name }} {{ probe_image }}
+        -fsS http://{{ app_name }}-{{ target_color }}:8080/actuator/health
+      register: target_health
+      until: target_health.rc == 0
+      retries: 40
+      delay: 3
+      changed_when: false
+
+  rescue:
+    - name: Récupérer les logs de {{ target_color }}
+      ansible.builtin.command: docker logs --tail 40 {{ app_name }}-{{ target_color }}
+      register: logs
+      changed_when: false
+      failed_when: false
+
+    - name: Arrêter la couleur défaillante
+      community.docker.docker_container:
+        name: "{{ app_name }}-{{ target_color }}"
+        state: absent
+
+    - name: Échec (le trafic n'a jamais quitté l'ancienne version)
+      ansible.builtin.fail:
+        msg: >-
+          Healthcheck KO sur {{ target_color }} ({{ app_version }}) : pas de bascule,
+          le proxy reste sur {{ active_color | default('aucune', true) }}.
+          {{ logs.stdout | default('') }} {{ logs.stderr | default('') }}
+
+# --- 4. Le proxy (créé au premier déploiement, APRÈS l'appli) -------------------
+- name: Retirer l'ancien conteneur unique, qui occupait le port {{ app_port }}
+  community.docker.docker_container:
+    name: "{{ app_name }}"
+    state: absent
+
+- name: Proxy nginx {{ proxy_name }}
+  community.docker.docker_container:
+    name: "{{ proxy_name }}"
+    image: "{{ proxy_image }}"
+    state: started
+    restart_policy: unless-stopped
+    network_mode: "{{ network_name }}"
+    networks:
+      - name: "{{ network_name }}"
+    published_ports:
+      - "{{ app_port }}:80"
+    labels:
+      project: job-application-tracker
+      environment: "{{ env_name }}"
+      managed-by: ansible
+
+# --- 5. Bascule du trafic, puis vérification de bout en bout --------------------
+- name: Basculer le trafic vers {{ target_color }}
+  block:
+    - name: Écrire la configuration nginx (vers {{ target_color }})
+      ansible.builtin.command:
+        cmd: docker exec -i {{ proxy_name }} sh -c 'cat > /etc/nginx/conf.d/default.conf'
+        stdin: "{{ lookup('template', 'nginx.conf.j2') }}"
+      vars:
+        upstream_color: "{{ target_color }}"
+
+    - name: Vérifier puis recharger nginx (sans interruption)
+      ansible.builtin.command: docker exec {{ proxy_name }} sh -c 'nginx -t && nginx -s reload'
+
+    - name: Mémoriser la couleur active
+      ansible.builtin.command: docker exec {{ proxy_name }} sh -c 'echo {{ target_color }} > /etc/nginx/active_color'
+
+    - name: Vérifier la santé à travers le proxy (port {{ app_port }})
+      ansible.builtin.uri:
+        url: "{{ health_url }}"
+        status_code: 200
+      register: proxy_health
+      until: proxy_health.status == 200
+      retries: 10
+      delay: 3
+
+  rescue:
+    - name: Retour arrière automatique vers {{ active_color }}
+      when: active_color | length > 0
+      block:
+        - name: Remettre la configuration nginx (vers {{ active_color }})
+          ansible.builtin.command:
+            cmd: docker exec -i {{ proxy_name }} sh -c 'cat > /etc/nginx/conf.d/default.conf'
+            stdin: "{{ lookup('template', 'nginx.conf.j2') }}"
+          vars:
+            upstream_color: "{{ active_color }}"
+
+        - name: Recharger nginx
+          ansible.builtin.command: docker exec {{ proxy_name }} sh -c 'nginx -t && nginx -s reload'
+
+        - name: Mémoriser la couleur active
+          ansible.builtin.command: docker exec {{ proxy_name }} sh -c 'echo {{ active_color }} > /etc/nginx/active_color'
+
+    - name: Échec de la bascule
+      ansible.builtin.fail:
+        msg: >-
+          Bascule vers {{ target_color }} ({{ app_version }}) KO à travers le proxy :
+          retour arrière sur {{ active_color | default('aucune', true) }}.
+
+- name: Résumé blue/green
+  ansible.builtin.debug:
+    msg: >-
+      {{ env_name }} : {{ app_version }} en ligne sur {{ target_color }} ;
+      {{ active_color | default('aucune', true) }} conservée pour un retour arrière instantané.
