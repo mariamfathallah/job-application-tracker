@@ -19,9 +19,17 @@ pipeline {
       parallel {
         stage('Backend') {
           steps {
-            sh 'chmod +x mvnw && ./mvnw -B test'
+            sh 'chmod +x mvnw && ./mvnw -B verify'
           }
-          post { always { junit 'target/surefire-reports/*.xml' } }
+          post {
+            always {
+              junit 'target/surefire-reports/*.xml'
+              recordCoverage(
+                tools: [[parser: 'JACOCO', pattern: 'target/site/jacoco/jacoco.xml']],
+                sourceCodeRetention: 'EVERY_BUILD'
+              )
+            }
+          }
         }
         stage('Frontend') {
           steps {
@@ -40,7 +48,7 @@ pipeline {
     stage('SonarQube') {
       steps {
         withSonarQubeEnv('sonar') {
-          sh './mvnw -B -DskipTests verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=job-application-tracker'
+          sh './mvnw -B -DskipTests org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=job-application-tracker'
         }
       }
     }
@@ -101,6 +109,19 @@ pipeline {
         }
         sh 'sh ci/scripts/infra.sh apply production'   // applique exactement le plan validé
         sh 'NEXUS_URL=$NEXUS_URL NEXUS_USER=$NEXUS_CREDS_USR NEXUS_PASSWORD=$NEXUS_CREDS_PSW sh ci/scripts/deploy.sh production "$VERSION"'
+      }
+    }
+  }
+  post {
+    always {
+      withCredentials([string(credentialsId: 'discord-webhook', variable: 'DISCORD_URL')]) {
+        script {
+          def status = currentBuild.currentResult
+          def icon = status == 'SUCCESS' ? '✅' : (status == 'UNSTABLE' ? '⚠️' : '❌')
+          def msg = "${icon} ${env.JOB_NAME} #${env.BUILD_NUMBER} : ${status} (${currentBuild.durationString}) ${env.BUILD_URL}"
+          writeFile file: 'discord.json', text: groovy.json.JsonOutput.toJson([content: msg])
+          sh 'curl -sS -H "Content-Type: application/json" -d @discord.json "$DISCORD_URL" || true'
+        }
       }
     }
   }
