@@ -16,6 +16,15 @@ pipeline {
   }
 
   stages {
+    // Conventional Commits imposés sur les PR (nécessaires à semantic-release)
+    stage('Commit lint') {
+        when { changeRequest() }
+        steps {
+          sh 'npm ci'
+          sh 'git fetch --no-tags origin +refs/heads/$CHANGE_TARGET:refs/remotes/origin/$CHANGE_TARGET'
+          sh 'npx commitlint --from origin/$CHANGE_TARGET --to HEAD --verbose'
+        }
+    }
     stage('Lint & tests') {
       parallel {
         stage('Backend') {
