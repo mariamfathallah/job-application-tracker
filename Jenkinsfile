@@ -60,12 +60,11 @@ pipeline {
 
     stage('Integration tests') {
       steps {
-        sh './mvnw -B -DskipTests package'
-        sh 'IT_BASE_URL=http://host.docker.internal:18080 sh ci/scripts/integration-test.sh'
+        sh 'IT_HOST=host.docker.internal sh ci/scripts/integration-test.sh'
       }
       post {
         always {
-          sh 'docker compose -f docker-compose.test.yml -p tracker-it down -v || true'
+          sh 'docker compose -f docker-compose.test.yml -p tracker-it-${EXECUTOR_NUMBER:-0} down -v || true'
         }
       }
     }

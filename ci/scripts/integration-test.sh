@@ -4,15 +4,18 @@ set -eu
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
 
-COMPOSE="docker compose -f docker-compose.test.yml -p tracker-it"
-BASE="${IT_BASE_URL:-http://localhost:18080}"
+COMPOSE="docker compose -f docker-compose.test.yml -p tracker-it-${EXECUTOR_NUMBER:-0}"
 EMAIL="it-$(date +%s)@example.com"
 PASSWORD='Secur3!Pass'
 
-JAR=$(ls target/*.jar | grep -v '\.original$' | head -n1)
+JAR="target/Job-application-tracker-0.0.1-SNAPSHOT.jar"
+[ -f "$JAR" ] || { echo "ECHEC : $JAR introuvable"; exit 1; }
 cp "$JAR" target/app-under-test.jar
 
 $COMPOSE up -d --build
+PORT=$($COMPOSE port app-test 8080 | cut -d: -f2)
+BASE="http://${IT_HOST:-localhost}:$PORT"
+echo "Application sur $BASE"
 
 echo "Attente de /actuator/health..."
 i=0
