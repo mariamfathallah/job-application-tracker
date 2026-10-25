@@ -1,4 +1,4 @@
-@Library('jenkins-shared-library@v1.0.1') _
+@Library('jenkins-shared-library@v1.1.0') _
 pipeline {
   agent { label 'build' }          // jamais le controller
 
@@ -76,12 +76,7 @@ pipeline {
           env.VERSION = "0.0.1-${sh(returnStdout: true, script: 'git rev-parse --short HEAD').trim()}"
         }
         sh './mvnw -B -DskipTests package'
-        sh '''
-          JAR=$(ls target/*.jar | grep -v '\\.original$' | head -n1)
-          cp "$JAR" "target/job-application-tracker-${VERSION}.jar"
-          curl -fsS -u "$NEXUS_CREDS_USR:$NEXUS_CREDS_PSW" --upload-file "target/job-application-tracker-${VERSION}.jar" \
-            "$NEXUS_URL/repository/artifacts/job-application-tracker/${VERSION}/job-application-tracker-${VERSION}.jar"
-        '''
+        publishToNexus()
         archiveArtifacts artifacts: 'target/job-application-tracker-*.jar', fingerprint: true
       }
     }
