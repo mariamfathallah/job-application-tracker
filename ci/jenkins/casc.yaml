@@ -67,5 +67,5 @@ jobs:
           }
         }
         orphanedItemStrategy { discardOldItems { numToKeep(10) } }
-        triggers { periodicFolderTrigger { interval('5m') } }
+        triggers { periodicFolderTrigger { interval('1h') } }
       }
