@@ -9,7 +9,7 @@ pipeline {
   }
 
   environment {
-    DEPLOY_BRANCH = 'feature/ci-jenkins'   // branche qui déclenche staging et production
+    DEPLOY_BRANCH = 'main'   // branche qui déclenche staging et production
     NEXUS_URL = 'http://nexus:8081'
     GITHUB_REPO = 'mariamfathallah/job-application-tracker'   // pour publier le plan d'infra sur les PR
     NEXUS_CREDS = credentials('nexus-creds')   // expose NEXUS_CREDS_USR / NEXUS_CREDS_PSW

@@ -49,7 +49,6 @@ Prérequis : Docker Desktop démarré, Git.
 ```bash
 git clone https://github.com/mariamfathallah/job-application-tracker.git
 cd job-application-tracker
-git checkout feature/ci-jenkins
 cd ci
 cp .env.example .env        # choisir son JENKINS_ADMIN_PASSWORD
 docker compose up -d --build
@@ -62,7 +61,7 @@ Puis, **dans cet ordre** :
 4. **GitHub** : créer un token *fine-grained* (**Public repositories (read-only)** suffit) → `GITHUB_USER` et `GITHUB_TOKEN` dans `ci/.env`. Sans token, le scan du dépôt échoue.
       Jenkins de référence uniquement (Mariam) : token limité au dépôt avec *Contents*, *Commit statuses* et *Pull requests* en lecture/écriture, `SMEE_URL` (channel https://smee.io relié au webhook du dépôt) et `RELEASES_ENABLED=true`.
 5. `docker compose up -d --build jenkins`
-6. Jenkins → job `job-application-tracker` → **Scan Repository Now**. Le build de `feature/ci-jenkins` doit passer.
+6. Jenkins → job `job-application-tracker` → **Scan Repository Now**. Le build de `main` doit passer.
 
 Les secrets restent dans `ci/.env` (ignoré par Git). **Ne jamais** les committer ni les coller dans un chat ou une PR ; s'échanger en message privé.
 
@@ -74,31 +73,31 @@ Les secrets restent dans `ci/.env` (ignoré par Git). **Ne jamais** les committe
 
 ### Branches
 ```
-main                      (ne pas toucher : branche de Mariam)
-feature/ci-jenkins        branche commune d'intégration (c'est elle qui déploie)
-  ├── module/<nom>        une branche par module / par tâche
+main                      branche du projet CI/CD : c'est elle qui déploie (staging auto, prod après validation)
+live                      site en ligne (Render + Vercel) : ne pas toucher
+  ├── module/<nom>        une branche par module / par tâche, créée depuis main
 ```
 
 ### Cycle d'une tâche
 ```bash
-git checkout feature/ci-jenkins && git pull
+git checkout main && git pull
 git checkout -b module/<nom>
 # ... travail, commits fréquents ...
 git push -u origin module/<nom>
 ```
 1. Jenkins construit la branche (tests + Sonar, **sans déployer**).
-2. Ouvrir une **Pull Request** vers `feature/ci-jenkins`.
+2. Ouvrir une **Pull Request** vers `main`.
 3. **Un autre membre** la relit (voir §7) ; build vert obligatoire.
 4. **L'auteur** fusionne en **Squash and merge** (seule option activée), supprime la branche, puis tout le monde fait `git pull`. Ne plus pousser sur une branche déjà fusionnée : repartir d'une nouvelle branche.
 
 ### Règles
 - **PR petites et fréquentes** (le `Jenkinsfile` et `deploy.sh` sont modifiés par plusieurs modules : les gros écarts créent des conflits).
 - **Conventional Commits** : `feat(ci): ...`, `fix(deploy): ...`, `docs: ...`, `chore: ...`. **Vérifié sur chaque PR** (étape `Commit lint`) ; le **titre de la PR** devient le message du commit après le squash, il doit donc aussi respecter le format. semantic-release calcule la version à partir de ces messages (`feat` → mineure, `fix` → correctif).
-- Ne jamais pousser directement sur `feature/ci-jenkins` ni forcer (`--force`).
+- Ne jamais pousser directement sur `main` ni forcer (`--force`).
 - Avant de modifier le `Jenkinsfile`, vérifier qu'il reste valide : l'ouvrir dans Jenkins (Replay) ou lancer un build sur sa branche.
 - Les fichiers `*.sh` et `ci/**` doivent rester en **LF** (déjà imposé par `.gitattributes`).
 - Une PR qui modifie `ci/jenkins/*` (`casc.yaml`, `plugins.txt`) ne peut passer que si le Jenkins de référence est reconstruit avec ces changements. Mieux : deux PR (d'abord la configuration, puis son utilisation dans le `Jenkinsfile`).
-- `main` est protégée : ne jamais ouvrir de PR vers `main` (c'est le site en ligne).
+- `live` est protégée : ne jamais ouvrir de PR vers `live` (c'est le site en ligne).
 
 ---
 
@@ -153,14 +152,14 @@ Module Qualité et retour rapide (niveau 1) :
 
 ### D — Dépôt/webhook/PR, Releases, Blue/green
 Partie commune :
-- [x] Rôle admin sur le dépôt ; A, B, C invités ; `feature/ci-jenkins` et `main` protégées (PR + 1 approbation + check Jenkins)
+- [x] Rôle admin sur le dépôt ; A, B, C invités ; `main` et `live` protégées (PR + 1 approbation + check Jenkinssur `main`)
 - [x] Token GitHub **fine-grained** dans `ci/.env` (référence : lecture/écriture ; autres membres : lecture seule)
 - [x] Source du job « GitHub » dans `ci/jenkins/casc.yaml` : builds `PR-<n>`, statut `continuous-integration/jenkins/pr-merge` sur les PR
 - [x] **Webhook** GitHub → smee.io → conteneur `ci-smee` → Jenkins (`smee-client@2.0.4` : la v5 supprime le `/` final, Jenkins répond 405) ; scan horaire en secours
 
 Module Releases automatisées (niveau 1) :
 - [x] Conventional Commits imposés en CI (`commitlint`, étape `Commit lint` sur les PR)
-- [x] semantic-release : calcul de version, `CHANGELOG.md`, **tag Git** `vX.Y.Z` (branche `feature/ci-jenkins`, `main` étant le site en ligne)
+- [x] semantic-release : calcul de version, `CHANGELOG.md`, **tag Git** `vX.Y.Z` (branche `main`, le site en ligne est déployé depuis `live`)
 - [x] Artefact versionné `X.Y.Z-<hash>`, **notes de version** publiées en GitHub Release ; publication uniquement sur le Jenkins de référence (`RELEASES_ENABLED`)
 
 Module Blue/green (niveau 2) :

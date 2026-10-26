@@ -1,5 +1,5 @@
 {
-  "branches": ["feature/ci-jenkins"],
+  "branches": ["main"],
   "tagFormat": "v${version}",
   "plugins": [
     "@semantic-release/commit-analyzer",
