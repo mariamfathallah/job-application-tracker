@@ -1,4 +1,3 @@
-![CI](https://github.com/mariamfathallah/job-application-tracker/actions/workflows/ci.yml/badge.svg)
 # Job Application Tracker – Secure Full-Stack Web Application
 
 A secure, production-ready full-stack web application to manage and track job applications throughout the recruitment process.
