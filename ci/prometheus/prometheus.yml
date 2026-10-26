@@ -26,3 +26,9 @@ scrape_configs:
       - targets: ["host.docker.internal:8083"]
         labels:
           environment: production
+
+  # Métriques DORA (ci/dora-exporter) : fréquence, délai, taux d'échec, rétablissement
+  - job_name: dora
+    scrape_interval: 60s
+    static_configs:
+      - targets: ["dora-exporter:9101"]

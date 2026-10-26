@@ -92,6 +92,28 @@ services:
       - "host.docker.internal:host-gateway"   # staging/prod publiés sur l'hôte (8082/8083)
     depends_on: [jenkins]
 
+  # Métriques DORA calculées depuis l'historique Jenkins et Git (ci/dora-exporter)
+  dora-exporter:
+    image: python:3.12-alpine
+    container_name: ci-dora-exporter
+    restart: unless-stopped
+    command: ["python", "-u", "/app/dora_exporter.py"]
+    environment:
+      JENKINS_URL: http://jenkins:8080
+      JENKINS_USER: ${JENKINS_ADMIN_USER}
+      JENKINS_PASSWORD: ${JENKINS_ADMIN_PASSWORD}
+      JENKINS_JOB: job-application-tracker
+      # branches qui déploient en prod : main (DEPLOY_BRANCH du Jenkinsfile) + l'historique de feature/ci-jenkins
+      DEPLOY_BRANCHES: main,feature/ci-jenkins
+      PROD_STAGE: Deploy production
+      GITHUB_REPO: mariamfathallah/job-application-tracker
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      STATE_FILE: /data/dora-state.json
+    volumes:
+      - ./dora-exporter/dora_exporter.py:/app/dora_exporter.py:ro
+      - dora_data:/data                           # historique des déploiements (Jenkins n'en garde que 20)
+    depends_on: [jenkins]
+
   grafana:
     image: grafana/grafana:12.1.0
     container_name: ci-grafana
@@ -119,3 +141,4 @@ volumes:
   nexus_data:
   prometheus_data:
   grafana_data:
+  dora_data:
