@@ -1,0 +1,121 @@
+# Outillage CI/CD : Jenkins (controller + agent), SonarQube, Nexus.
+# Lancement : cp .env.example .env  (puis éditer)  &&  docker compose up -d --build
+services:
+  jenkins:
+    build: ./jenkins
+    container_name: ci-jenkins
+    restart: unless-stopped
+    ports:
+      - "8090:8080"
+    environment:
+      JENKINS_ADMIN_USER: ${JENKINS_ADMIN_USER}
+      JENKINS_ADMIN_PASSWORD: ${JENKINS_ADMIN_PASSWORD}
+      JENKINS_URL: ${JENKINS_PUBLIC_URL:-http://localhost:8090/}
+      GITHUB_USER: ${GITHUB_USER:-}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      SONAR_TOKEN: ${SONAR_TOKEN:-}
+      DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL:-}
+      NEXUS_USER: ${NEXUS_USER:-admin}
+      NEXUS_PASSWORD: ${NEXUS_PASSWORD:-}
+      RELEASES_ENABLED: ${RELEASES_ENABLED:-false}
+    volumes:
+      - jenkins_home:/var/jenkins_home
+    depends_on: [sonarqube, nexus]
+
+  # Les builds tournent ici, jamais sur le controller (0 executor).
+  agent:
+    build: ./agent
+    container_name: ci-agent
+    restart: unless-stopped
+    user: root
+    environment:
+      JENKINS_URL: http://jenkins:8080
+      JENKINS_AGENT_NAME: agent-1
+      JENKINS_ADMIN_USER: ${JENKINS_ADMIN_USER}
+      JENKINS_ADMIN_PASSWORD: ${JENKINS_ADMIN_PASSWORD}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      # même chemin côté hôte Docker et côté agent (docker-out-of-docker)
+      - /opt/jenkins-agent:/opt/jenkins-agent
+      - m2_cache:/root/.m2
+      - npm_cache:/root/.npm
+      - tf_state:/tfstate                               # état OpenTofu (contient des secrets, hors Git)
+      - tf_plugins:/root/.terraform.d/plugin-cache
+    depends_on: [jenkins]
+
+  # Relais des webhooks GitHub vers Jenkins (Jenkins n'est pas joignable depuis Internet)
+  smee:
+    image: node:22-alpine
+    container_name: ci-smee
+    restart: unless-stopped
+    command: npx --yes smee-client@2.0.4 --url ${SMEE_URL} --target http://jenkins:8080/github-webhook/
+    depends_on: [ jenkins ]
+
+  sonarqube:
+    image: sonarqube:lts-community
+    container_name: ci-sonarqube
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+    environment:
+      SONAR_SEARCH_JAVAADDITIONALOPTS: "-Dnode.store.allow_mmap=false"
+    volumes:
+      - sonar_data:/opt/sonarqube/data
+      - sonar_extensions:/opt/sonarqube/extensions
+
+  nexus:
+    image: sonatype/nexus3
+    container_name: ci-nexus
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      INSTALL4J_ADD_VM_PARAMS: "-Xms512m -Xmx1g -XX:MaxDirectMemorySize=1g"
+    volumes:
+      - nexus_data:/nexus-data
+
+  # Observabilité : Prometheus collecte les métriques, Grafana les affiche.
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    container_name: ci-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=180d   # garder l'historique sur toute la durée du projet
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    extra_hosts:
+      - "host.docker.internal:host-gateway"   # staging/prod publiés sur l'hôte (8082/8083)
+    depends_on: [jenkins]
+
+  grafana:
+    image: grafana/grafana:12.1.0
+    container_name: ci-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD manquant dans ci/.env}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/etc/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    depends_on: [prometheus]
+
+volumes:
+  jenkins_home:
+  m2_cache:
+  npm_cache:
+  tf_state:
+  tf_plugins:
+  sonar_data:
+  sonar_extensions:
+  nexus_data:
+  prometheus_data:
+  grafana_data:

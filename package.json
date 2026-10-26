@@ -1,0 +1,15 @@
+{
+  "name": "job-application-tracker-release",
+  "private": true,
+  "description": "Outils de release (commitlint, semantic-release) utilisés par le pipeline Jenkins",
+  "scripts": {
+    "commitlint": "commitlint",
+    "release": "semantic-release"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^20.5.0",
+    "@commitlint/config-conventional": "^20.5.0",
+    "@semantic-release/changelog": "^6.0.3",
+    "semantic-release": "^24.2.9"
+  }
+}

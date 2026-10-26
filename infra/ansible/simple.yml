@@ -1,0 +1,48 @@
+# Stratégie simple (staging) : un seul conteneur, remplacé à chaque nouvelle version.
+# Inclus par deploy.yml quand strategy = simple.
+- name: Démarrer (ou mettre à jour) le conteneur de l'application
+  block:
+    - name: Conteneur {{ app_name }}
+      community.docker.docker_container:
+        name: "{{ app_name }}"
+        image: "{{ image }}:{{ app_version }}"
+        state: started
+        restart_policy: unless-stopped
+        network_mode: "{{ network_name }}"
+        networks:
+          - name: "{{ network_name }}"
+        published_ports:
+          - "{{ app_port }}:8080"
+        labels:
+          project: job-application-tracker
+          environment: "{{ env_name }}"
+          version: "{{ app_version }}"
+          managed-by: ansible
+        env:
+          SPRING_PROFILES_ACTIVE: prod
+          SPRING_DATASOURCE_URL: "jdbc:postgresql://{{ db_host }}:5432/jobtracker"
+          SPRING_DATASOURCE_USERNAME: jobtracker
+          SPRING_DATASOURCE_PASSWORD: "{{ db_password }}"
+          JWT_SECRET: "{{ jwt_secret }}"
+          JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=75 -Xmx384m"
+      no_log: true
+
+    - name: Vérifier la santé de l'application
+      ansible.builtin.uri:
+        url: "{{ health_url }}"
+        status_code: 200
+      register: health
+      until: health.status == 200
+      retries: 40
+      delay: 3
+
+  rescue:
+    - name: Récupérer les logs du conteneur
+      ansible.builtin.command: docker logs --tail 40 {{ app_name }}
+      register: logs
+      changed_when: false
+      failed_when: false
+
+    - name: Échec du déploiement
+      ansible.builtin.fail:
+        msg: "Healthcheck KO sur {{ env_name }} ({{ app_version }})\n{{ logs.stdout | default('') }}\n{{ logs.stderr | default('') }}"

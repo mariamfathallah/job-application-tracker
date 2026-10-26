@@ -1,0 +1,79 @@
+# Déploie une version de l'application dans un environnement provisionné par OpenTofu.
+# Variables attendues (fournies par ci/scripts/deploy.sh à partir des outputs OpenTofu) :
+#   env_name, app_version, app_name, app_port, network_name, db_host, db_password, jwt_secret
+#   deploy_strategy (optionnelle) : simple | bluegreen
+# Variables d'environnement : NEXUS_URL, NEXUS_USER, NEXUS_PASSWORD
+- name: Déployer job-application-tracker
+  hosts: docker_host
+  gather_facts: false
+
+  vars:
+    nexus_url: "{{ lookup('env', 'NEXUS_URL') | default('http://nexus:8081', true) }}"
+    artifact_url: "{{ nexus_url }}/repository/artifacts/job-application-tracker/{{ app_version }}/job-application-tracker-{{ app_version }}.jar"
+    # Un dossier par version : get_url ne retélécharge pas un fichier déjà présent,
+    # un dossier partagé entre versions ferait construire l'image avec un ancien jar.
+    build_root: "/tmp/build-{{ app_name }}"
+    build_dir: "{{ build_root }}/{{ app_version }}"
+    image: "{{ app_name }}"
+    health_url: "http://host.docker.internal:{{ app_port }}/actuator/health"
+    rollout: "{{ deploy_strategy | default('bluegreen', true) }}"
+
+  tasks:
+    - name: Préparer le dossier de construction de l'image
+      ansible.builtin.file:
+        path: "{{ build_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: Télécharger l'artefact depuis Nexus (le même que celui testé)
+      ansible.builtin.get_url:
+        url: "{{ artifact_url }}"
+        dest: "{{ build_dir }}/app.jar"
+        url_username: "{{ lookup('env', 'NEXUS_USER') }}"
+        url_password: "{{ lookup('env', 'NEXUS_PASSWORD') }}"
+        force_basic_auth: true
+        mode: "0644"
+      register: artifact
+      no_log: true
+
+    - name: Écrire le Dockerfile d'exécution
+      ansible.builtin.copy:
+        dest: "{{ build_dir }}/Dockerfile"
+        mode: "0644"
+        content: |
+          FROM eclipse-temurin:21-jre
+          COPY app.jar /app.jar
+          EXPOSE 8080
+          ENTRYPOINT ["java", "-jar", "/app.jar"]
+
+    - name: Construire l'image {{ image }}:{{ app_version }}
+      community.docker.docker_image:
+        name: "{{ image }}"
+        tag: "{{ app_version }}"
+        source: build
+        build:
+          path: "{{ build_dir }}"
+        # jar fraîchement téléchargé : on reconstruit (une image du même tag a pu être faite avec un autre jar)
+        force_source: "{{ artifact is changed }}"
+
+    - name: Lister les fichiers de construction des autres versions
+      ansible.builtin.find:
+        paths: "{{ build_root }}"
+        file_type: any
+        excludes: "{{ app_version }}"
+      register: old_builds
+
+    - name: Supprimer les fichiers des autres versions (l'image est construite)
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: absent
+      loop: "{{ old_builds.files }}"
+      loop_control:
+        label: "{{ item.path | basename }}"
+
+    - name: Déployer selon la stratégie « {{ rollout }} »
+      ansible.builtin.include_tasks: "{{ rollout }}.yml"
+
+    - name: Résumé
+      ansible.builtin.debug:
+        msg: "{{ env_name }} OK ({{ app_version }}) sur le port {{ app_port }}"

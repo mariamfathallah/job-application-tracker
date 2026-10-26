@@ -1,0 +1,91 @@
+jenkins:
+  systemMessage: "Jenkins CI/CD - configuré par JCasC (ci/jenkins/casc.yaml)"
+  numExecutors: 0            # le controller ne build jamais
+  globalNodeProperties:
+    - envVars:
+        env:
+          - key: "RELEASES_ENABLED"
+            value: "${RELEASES_ENABLED:-false}"
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: "${JENKINS_ADMIN_USER}"
+          password: "${JENKINS_ADMIN_PASSWORD}"
+  authorizationStrategy:
+    loggedInUsersCanDoAnything:
+      allowAnonymousRead: false
+  nodes:
+    - permanent:
+        name: "agent-1"
+        remoteFS: "/opt/jenkins-agent"
+        numExecutors: 3
+        labelString: "build docker"
+        launcher:
+          inbound:
+            webSocket: true
+unclassified:
+  location:
+    url: "${JENKINS_URL}"
+  sonarGlobalConfiguration:
+    installations:
+      - name: "sonar"
+        serverUrl: "http://sonarqube:9000"
+        credentialsId: "sonar-token"
+  globalLibraries:
+    libraries:
+      - name: "jenkins-shared-library"
+        defaultVersion: "v1.0.1"
+        implicit: false
+        allowVersionOverride: true
+        retriever:
+          modernSCM:
+            scm:
+              git:
+                remote: "https://github.com/l3miage-morabitb/jenkins-shared-library.git"
+credentials:
+  system:
+    domainCredentials:
+      - credentials:
+          - string:
+              scope: GLOBAL
+              id: "sonar-token"
+              secret: "${SONAR_TOKEN:-}"
+          - string:
+              scope: GLOBAL
+              id: "discord-webhook"
+              secret: "${DISCORD_WEBHOOK_URL:-}"
+          - usernamePassword:
+              scope: GLOBAL
+              id: "github-token"
+              username: "${GITHUB_USER:-none}"
+              password: "${GITHUB_TOKEN:-none}"
+          - usernamePassword:
+              scope: GLOBAL
+              id: "nexus-creds"
+              username: "${NEXUS_USER:-admin}"
+              password: "${NEXUS_PASSWORD:-}"
+jobs:
+  - script: >
+      multibranchPipelineJob('job-application-tracker') {
+        branchSources {
+          branchSource {
+            source {
+              github {
+                id('job-application-tracker')
+                repoOwner('mariamfathallah')
+                repository('job-application-tracker')
+                repositoryUrl('https://github.com/mariamfathallah/job-application-tracker')
+                configuredByUrl(true)
+                credentialsId('github-token')
+                traits {
+                  gitHubBranchDiscovery { strategyId(1) }      // branches (except those already opened as a PR)
+                  gitHubPullRequestDiscovery { strategyId(1) } // PRs, built merged with their target branch
+                }
+              }
+            }
+          }
+        }
+        orphanedItemStrategy { discardOldItems { numToKeep(10) } }
+        triggers { periodicFolderTrigger { interval('1h') } }
+      }
