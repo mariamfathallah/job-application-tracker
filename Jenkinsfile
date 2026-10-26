@@ -105,7 +105,7 @@ pipeline {
               echo "${TAG#v}-$(git rev-parse --short HEAD)"
             ''').trim()
         }
-        sh 'rm -f target/job-application-tracker-*.jar'   // copies left by previous builds (the workspace is kept)
+        sh 'rm -f target/job-application-tracker-*.jar'   // copies des builds précédents (le workspace est conservé)
         publishToNexus()
         archiveArtifacts artifacts: "target/job-application-tracker-${env.VERSION}.jar", fingerprint: true
       }
@@ -152,6 +152,7 @@ pipeline {
   post {
     always {
       notifyDiscord()
+      deleteDir()   // libère le workspace : le disque de l'agent est petit (3,9 Go) et Jenkins ne supprime jamais les workspaces des branches fusionnées
     }
   }
 }
