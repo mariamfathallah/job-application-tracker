@@ -107,10 +107,10 @@ git push -u origin module/<nom>
 
 | | Personne | Tâches |
 |---|---|---|
-| **A** | _à compléter_ | Shared Library, tests d'intégration, module **Qualité et retour rapide** |
-| **B** | _à compléter_ | Module **Environnements as Code** (Terraform/OpenTofu + Ansible) — niveau 3 |
-| **C** | _à compléter_ | Module **Observabilité et DORA** (Prometheus + Grafana) — niveau 3 |
-| **D** | _à compléter_ | Accès dépôt + webhook + statut PR, modules **Releases automatisées** et **Blue/green** |
+| **A** | Basma MORABIT | Shared Library, tests d'intégration, module **Qualité et retour rapide** |
+| **B** | Bastien LIEVRE | Module **Environnements as Code** (Terraform/OpenTofu + Ansible) — niveau 3 |
+| **C** | Siham AIDROUS | Module **Observabilité et DORA** (Prometheus + Grafana) — niveau 3 |
+| **D** | Mariam FATHALLAH | Accès dépôt + webhook + statut PR, modules **Releases automatisées** et **Blue/green** |
 
 Total modules : Terraform/Ansible (B), DORA (C), Qualité (A), Releases (D), Blue/green (D) = **5**.
 Transverse (tous) : rapport technique, README, répétition de soutenance.
