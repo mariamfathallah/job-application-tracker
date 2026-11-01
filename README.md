@@ -168,6 +168,7 @@ Tests de l'exporter (depuis la racine du dépôt) : `python -m unittest discover
 | `agent-1` hors ligne | moins de 1 Go de disque libre, ou agent juste reconstruit | supprimer les anciens workspaces (`docker exec ci-agent sh -c 'rm -rf /opt/jenkins-agent/workspace/*'`), attendre une minute |
 | Docker ne répond plus, tests qui expirent | mémoire insuffisante | fermer les applications lourdes, augmenter `memory` dans `.wslconfig`, `wsl --shutdown` puis relancer Docker Desktop |
 | `jobtracker-postgres` démarre au lieu de la plateforme | `docker compose` lancé à la racine du dépôt | `docker stop jobtracker-postgres`, relancer depuis `ci/` |
+| Un déploiement échoue avec `invalid PID number` | le proxy vient d'être recréé et nginx n'a pas fini de démarrer | relancer le build (le proxy est alors démarré) |
 
 ## Commandes utiles
 
