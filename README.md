@@ -130,6 +130,24 @@ Les secrets sont des credentials Jenkins créés depuis `ci/.env` (jamais dans G
 | Environnements as Code (OpenTofu + Ansible) | 3      | [`infra/README.md`](infra/README.md) |
 | Observabilité & DORA (Prometheus, Grafana) | 3      | [section DORA](#observabilité-et-métriques-dora), [`ci/dora-exporter/`](ci/dora-exporter/) |
 
+## Observabilité et métriques DORA
+- **Prometheus** collecte les métriques de Jenkins (plugin `prometheus`, `/prometheus/`), de l'application en staging et en production (`/actuator/prometheus`) et de l'exporter DORA. Historique conservé 180 jours.
+- **Grafana** est provisionné automatiquement (source Prometheus + tableaux de bord de `ci/grafana/dashboards/`, dossier *CI/CD*) :
+    - *Job Application Tracker - Vue d'ensemble* : santé des cibles, requêtes, erreurs, mémoire, durée des builds ;
+    - *DORA - Job Application Tracker* : les 4 métriques DORA, par période (7 jours, 30 jours, tout le projet).
+- **`ci/dora-exporter/`** calcule les métriques DORA depuis Jenkins et Git, sans saisie manuelle :
+
+| Métrique | Calcul |
+|---|---|
+| Fréquence de déploiement | stages *Deploy production* réussis par jour (branche `main`, plus l'historique de `feature/ci-jenkins` qui déployait avant) |
+| Délai de livraison | fin du déploiement réussi - heure de chaque commit livré (changeSets Jenkins, ou API GitHub pour le premier build) |
+| Taux d'échec | stages *Deploy production* en échec (dont retour arrière blue/green) / déploiements |
+| Temps de rétablissement | premier échec en production -> déploiement réussi suivant |
+
+Une validation refusée n'est pas un déploiement. Jenkins ne garde que 20 builds : l'exporter mémorise chaque build terminé dans le volume `dora_data`, l'historique couvre donc toute la durée du projet. Les vraies valeurs sont celles du Jenkins de référence.
+
+Tests de l'exporter (depuis la racine du dépôt) : `python -m unittest discover -s ci/dora-exporter`
+
 ## Branches
 
 | Branche | Rôle |
@@ -158,25 +176,8 @@ docker compose ps                    # état des services
 docker compose logs -f jenkins       # journaux d'un service
 docker compose up -d --build jenkins # après une modification de casc.yaml ou plugins.txt
 docker compose down                  # arrêt (les volumes, donc les données, sont conservés)
+docker compose down -v               # ⚠ supprime aussi les volumes : Jenkins, Nexus, SonarQube, état OpenTofu et historique DORA (dora_data) sont perdus
 ```
-
-## Observabilité et métriques DORA
-- **Prometheus** collecte les métriques de Jenkins (plugin `prometheus`, `/prometheus/`), de l'application en staging et en production (`/actuator/prometheus`) et de l'exporter DORA. Historique conservé 180 jours.
-- **Grafana** est provisionné automatiquement (source Prometheus + tableaux de bord de `ci/grafana/dashboards/`, dossier *CI/CD*) :
-  - *Job Application Tracker - Vue d'ensemble* : santé des cibles, requêtes, erreurs, mémoire, durée des builds ;
-  - *DORA - Job Application Tracker* : les 4 métriques DORA, par période (7 jours, 30 jours, tout le projet).
-- **`ci/dora-exporter/`** calcule les métriques DORA depuis Jenkins et Git, sans saisie manuelle :
-
-| Métrique | Calcul |
-|---|---|
-| Fréquence de déploiement | stages *Deploy production* réussis par jour (branche `main`, plus l'historique de `feature/ci-jenkins` qui déployait avant) |
-| Délai de livraison | fin du déploiement réussi - heure de chaque commit livré (changeSets Jenkins, ou API GitHub pour le premier build) |
-| Taux d'échec | stages *Deploy production* en échec (dont retour arrière blue/green) / déploiements |
-| Temps de rétablissement | premier échec en production -> déploiement réussi suivant |
-
-Une validation refusée n'est pas un déploiement. Jenkins ne garde que 20 builds : l'exporter mémorise chaque build terminé dans le volume `dora_data`, l'historique couvre donc toute la durée du projet. Les vraies valeurs sont celles du Jenkins de référence.
-
-Tests de l'exporter (depuis la racine du dépôt) : `python -m unittest discover -s ci/dora-exporter`
 
 ---
 
