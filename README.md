@@ -6,7 +6,7 @@ Projet du cours **CI/CD avec Jenkins** (ESGI) : une chaîne d'intégration et de
 
 **Équipe :** Basma MORABIT · Bastien LIEVRE · Siham AIDROUS · Mariam FATHALLAH
 
-**Rendu :** [Rapport technique](<lien>) · [Vidéo de démonstration](<lien>)
+**Rendu :** [Rapport technique](docs/rapport-technique.pdf) · [Vidéo de démonstration](<lien>)
 
 ---
 ## Tout relancer
